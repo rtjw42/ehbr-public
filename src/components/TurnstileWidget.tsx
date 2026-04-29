@@ -10,6 +10,7 @@ declare global {
           callback: (token: string) => void;
           "expired-callback": () => void;
           "error-callback": () => void;
+          "timeout-callback"?: () => void;
           theme?: "light" | "dark" | "auto";
         },
       ) => string;
@@ -48,10 +49,12 @@ const loadTurnstileScript = () => {
 type Props = {
   siteKey: string;
   onTokenChange: (token: string) => void;
+  onExpired?: () => void;
+  onError?: () => void;
   resetSignal?: number;
 };
 
-export const TurnstileWidget = ({ siteKey, onTokenChange, resetSignal = 0 }: Props) => {
+export const TurnstileWidget = ({ siteKey, onTokenChange, onExpired, onError, resetSignal = 0 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
 
@@ -65,11 +68,24 @@ export const TurnstileWidget = ({ siteKey, onTokenChange, resetSignal = 0 }: Pro
           sitekey: siteKey,
           theme: "auto",
           callback: onTokenChange,
-          "expired-callback": () => onTokenChange(""),
-          "error-callback": () => onTokenChange(""),
+          "expired-callback": () => {
+            onTokenChange("");
+            onExpired?.();
+          },
+          "error-callback": () => {
+            onTokenChange("");
+            onError?.();
+          },
+          "timeout-callback": () => {
+            onTokenChange("");
+            onExpired?.();
+          },
         });
       })
-      .catch(() => onTokenChange(""));
+      .catch(() => {
+        onTokenChange("");
+        onError?.();
+      });
 
     return () => {
       cancelled = true;
@@ -78,7 +94,7 @@ export const TurnstileWidget = ({ siteKey, onTokenChange, resetSignal = 0 }: Pro
         widgetIdRef.current = null;
       }
     };
-  }, [onTokenChange, siteKey]);
+  }, [onError, onExpired, onTokenChange, siteKey]);
 
   useEffect(() => {
     if (resetSignal > 0 && widgetIdRef.current && window.turnstile) {

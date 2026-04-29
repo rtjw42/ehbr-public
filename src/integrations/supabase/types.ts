@@ -117,36 +117,6 @@ export type Database = {
         }
         Relationships: []
       }
-      backline_gear: {
-        Row: {
-          category: string
-          condition: string
-          created_at: string
-          id: string
-          name: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          category: string
-          condition: string
-          created_at?: string
-          id?: string
-          name: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          category?: string
-          condition?: string
-          created_at?: string
-          id?: string
-          name?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       booking_groups: {
         Row: {
           created_at: string
@@ -403,7 +373,6 @@ export type Database = {
         Returns: string
       }
       is_master_admin: { Args: never; Returns: boolean }
-      reject_booking: { Args: { _booking_id: string }; Returns: undefined }
       submit_booking_request: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {

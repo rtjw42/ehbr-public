@@ -5,9 +5,8 @@ import { format, isPast } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { MapPin, Plus, Pencil, Trash2, Calendar as CalendarIcon, Music } from "lucide-react";
 import { EventForm } from "@/components/EventForm";
-import { SiteNav } from "@/components/SiteNav";
 import { toast } from "sonner";
-import type { Session } from "@supabase/supabase-js";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -15,7 +14,7 @@ import {
 
 const Events = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, ensureAdminSession } = useAdmin();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EventItem | null>(null);
@@ -37,19 +36,9 @@ const Events = () => {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  useEffect(() => {
-    const check = async (session: Session | null) => {
-      if (!session) { setIsAdmin(false); return; }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
-      setIsAdmin(!!data?.some((r) => r.role === "admin"));
-    };
-    supabase.auth.getSession().then(({ data: { session } }) => check(session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setTimeout(() => check(session), 0));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
   const handleDelete = async () => {
     if (!pendingDelete) return;
+    if (!(await ensureAdminSession())) return;
     const { error } = await supabase.from("events").delete().eq("id", pendingDelete.id);
     if (error) toast.error(error.message);
     else toast.success("Event deleted");
@@ -69,8 +58,6 @@ const Events = () => {
         <div className="absolute -bottom-[12%] left-1/3 h-[clamp(15rem,42vw,28rem)] w-[clamp(15rem,42vw,28rem)] rounded-full bg-[hsl(280_50%_50%/0.10)] blur-3xl animate-float-slow" />
       </div>
 
-      <SiteNav />
-
       <header className="border-b bg-card/60 backdrop-blur relative z-20">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center gap-3 min-w-0 hero-enter">
@@ -79,7 +66,7 @@ const Events = () => {
             </div>
           </div>
           {isAdmin && (
-            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="shadow-soft">
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="admin-reveal shadow-soft">
               <Plus className="h-4 w-4" /> New event
             </Button>
           )}
@@ -233,7 +220,7 @@ const ScrollVinylRow = ({ event, index, isAdmin, faded, onEdit, onDelete }: RowP
           <p className="max-w-full text-base leading-relaxed text-foreground/70">{event.description}</p>
         )}
         {isAdmin && (
-          <div className={`flex flex-wrap gap-2 pt-3 ${fromLeft ? "" : "md:justify-end"}`}>
+          <div className={`admin-reveal flex flex-wrap gap-2 pt-3 ${fromLeft ? "" : "md:justify-end"}`}>
             <Button size="sm" variant="outline" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>

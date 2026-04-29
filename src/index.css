@@ -304,18 +304,35 @@
 
 .animate-admin-dropdown {
   transform-origin: top right;
-  animation: admin-dropdown-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: admin-dropdown-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes admin-dropdown-in {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-0.75rem) scale(0.97);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin-reveal {
+  transform-origin: center;
+  animation: admin-control-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes admin-control-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

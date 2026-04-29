@@ -19,6 +19,13 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const errorStatus = (message: string) => {
+  if (/verification|turnstile|challenge/i.test(message)) return 403;
+  if (/conflict|overlap|exclude constraint/i.test(message)) return 409;
+  if (/required|invalid|must|array|between|after/i.test(message)) return 400;
+  return 500;
+};
+
 const verifyTurnstile = async (token: string, remoteIp: string | null) => {
   const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
   if (!secret) {
@@ -43,7 +50,7 @@ const verifyTurnstile = async (token: string, remoteIp: string | null) => {
   const result = (await response.json()) as TurnstileResponse;
   if (!result.success) {
     console.warn("Turnstile verification failed", result["error-codes"] ?? []);
-    throw new Error("Verification failed. Please refresh and try again.");
+    throw new Error("Verification failed or expired. Please complete the challenge again.");
   }
 };
 
@@ -63,7 +70,12 @@ Deno.serve(async (req) => {
       throw new Error("Supabase function environment is not configured");
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Invalid booking request." }, 400);
+    }
     const turnstileToken = typeof body?.turnstileToken === "string" ? body.turnstileToken : "";
     const booking = body?.booking;
 
@@ -87,13 +99,14 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase.rpc("submit_booking_request", { payload: booking });
     if (error) {
       console.error("submit_booking_request failed", error);
-      return json({ error: error.message || "Could not submit booking request." }, 400);
+      const message = error.message || "Could not submit booking request.";
+      return json({ error: message }, errorStatus(message));
     }
 
     return json({ ok: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not submit booking request.";
     console.error("submit-booking error", message);
-    return json({ error: message }, 400);
+    return json({ error: message }, errorStatus(message));
   }
 });

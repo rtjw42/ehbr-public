@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { toast } from "sonner";
 import { X, Lock } from "lucide-react";
 import { z } from "zod";
 import { getErrorMessage } from "@/lib/errors";
+import { useAdmin } from "@/hooks/useAdmin";
 
 type AuthMode = "sign-in" | "register" | "forgot";
 
@@ -28,7 +28,7 @@ const getRegistrationPasswordError = (password: string) => {
 const emailSchema = z.string().trim().email("Enter a valid email address.");
 
 export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) => {
-  const nav = useNavigate();
+  const { refreshAdmin } = useAdmin();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,11 +117,11 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
       }
 
       await verifyAdmin();
+      await refreshAdmin();
       toast.success("Welcome back");
       setPassword("");
       setInviteCode("");
       onClose();
-      nav("/admin");
     } catch (error: unknown) {
       if (mode === "register") {
         await supabase.auth.signOut();

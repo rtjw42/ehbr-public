@@ -7,15 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Reveal } from "@/components/Reveal";
-import { SiteNav } from "@/components/SiteNav";
 import { supabase } from "@/integrations/supabase/client";
 import { EventItem } from "@/lib/events";
 import type { Tables } from "@/integrations/supabase/types";
 import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 import bauhausBg from "@/assets/bauhaus-music-bg.jpg";
-import type { Session } from "@supabase/supabase-js";
 import { getErrorMessage } from "@/lib/errors";
+import { useAdmin } from "@/hooks/useAdmin";
 
 type SiteContact = Tables<"site_contacts">;
 type SiteContactField = Tables<"site_contact_fields">;
@@ -32,7 +31,7 @@ type EditableField = {
 const Landing = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [contacts, setContacts] = useState<ContactWithFields[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, ensureAdminSession } = useAdmin();
   const [contactOpen, setContactOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<SiteContact | null>(null);
   const [draggingContactId, setDraggingContactId] = useState<string | null>(null);
@@ -72,21 +71,8 @@ const Landing = () => {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  useEffect(() => {
-    const check = async (session: Session | null) => {
-      if (!session) {
-        setIsAdmin(false);
-        return;
-      }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
-      setIsAdmin(!!data?.some((r) => r.role === "admin"));
-    };
-    supabase.auth.getSession().then(({ data: { session } }) => check(session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setTimeout(() => check(session), 0));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
   const deleteContact = async (contact: SiteContact) => {
+    if (!(await ensureAdminSession())) return;
     const { error } = await supabase.from("site_contacts").delete().eq("id", contact.id);
     if (error) toast.error(error.message);
     else {
@@ -97,6 +83,7 @@ const Landing = () => {
 
   const reorderContacts = async (targetContactId: string) => {
     if (!isAdmin || !draggingContactId || draggingContactId === targetContactId) return;
+    if (!(await ensureAdminSession())) return;
 
     const fromIndex = contacts.findIndex((contact) => contact.id === draggingContactId);
     const toIndex = contacts.findIndex((contact) => contact.id === targetContactId);
@@ -125,8 +112,6 @@ const Landing = () => {
 
   return (
     <div className="app-page-bg min-h-screen text-foreground page-transition">
-      <SiteNav />
-
       <main>
       <section className="overflow-guard relative min-h-[calc(100svh-3.5rem)] overflow-hidden border-b">
           <div
@@ -239,7 +224,7 @@ const Landing = () => {
                       setEditingContact(null);
                       setContactOpen(true);
                     }}
-                    className="w-full sm:w-auto"
+                    className="admin-reveal w-full sm:w-auto"
                   >
                     <Plus className="h-4 w-4" /> Add contact
                   </Button>
@@ -276,6 +261,7 @@ const Landing = () => {
       <ContactDialog
         open={contactOpen}
         editing={editingContact}
+        ensureAdminSession={ensureAdminSession}
         nextSortOrder={(contacts.length + 1) * 10}
         onClose={() => setContactOpen(false)}
         onSaved={() => {
@@ -332,7 +318,7 @@ const ContactCard = ({
         </div>
       </div>
       {isAdmin && (
-        <div className="flex shrink-0 gap-1">
+        <div className="admin-reveal flex shrink-0 gap-1">
           <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${contact.label}`}>
             <Pencil className="h-4 w-4" />
           </Button>
@@ -368,12 +354,14 @@ const ContactCard = ({
 const ContactDialog = ({
   open,
   editing,
+  ensureAdminSession,
   nextSortOrder,
   onClose,
   onSaved,
 }: {
   open: boolean;
   editing: ContactWithFields | null;
+  ensureAdminSession: () => Promise<boolean>;
   nextSortOrder: number;
   onClose: () => void;
   onSaved: () => void;
@@ -402,6 +390,7 @@ const ContactDialog = ({
   }, [open, editing]);
 
   const save = async () => {
+    if (!(await ensureAdminSession())) return;
     if (!label.trim()) {
       toast.error("Label is required");
       return;

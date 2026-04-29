@@ -1,17 +1,17 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Booking, bookingBg, bookingBorder, bookingDot, fmtTimeRange, overlaps } from "@/lib/booking-utils";
+import { Booking, bookingBg, bookingBorder, bookingDot, overlaps } from "@/lib/booking-utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { ArrowLeft, LogOut, Check, X, Trash2, Pencil, Copy, KeyRound, Ban } from "lucide-react";
+import { LogOut, Check, X, Trash2, Pencil, Copy, KeyRound, Ban, Plus } from "lucide-react";
 import { BookingForm } from "@/components/BookingForm";
 import type { Tables } from "@/integrations/supabase/types";
 import { getErrorMessage } from "@/lib/errors";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -22,10 +22,7 @@ const MASTER_ADMIN_EMAIL = "rtjw42@gmail.com";
 type AdminInvite = Tables<"admin_invite_codes">;
 
 const Admin = () => {
-  const nav = useNavigate();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const { authChecked, isAdminPanelOpen, userEmail, closeAdminPanel, signOutAdmin, ensureAdminSession } = useAdmin();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [inviteLabel, setInviteLabel] = useState("Band leader");
@@ -34,33 +31,15 @@ const Admin = () => {
   const [generatedInvite, setGeneratedInvite] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Booking | null>(null);
+  const [pendingRejectDelete, setPendingRejectDelete] = useState<Booking | null>(null);
   const [editing, setEditing] = useState<Booking | null>(null);
+  const [bookingFormOpen, setBookingFormOpen] = useState(false);
 
   const isMasterAdmin = userEmail.toLowerCase() === MASTER_ADMIN_EMAIL;
 
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) { nav("/", { replace: true }); return; }
-      setTimeout(async () => {
-        const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
-        const admin = !!data?.some((r) => r.role === "admin");
-        setUserEmail(session.user.email ?? "");
-        setIsAdmin(admin);
-        setAuthChecked(true);
-        if (!admin) nav("/", { replace: true });
-      }, 0);
-    });
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { nav("/", { replace: true }); return; }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
-      const admin = !!data?.some((r) => r.role === "admin");
-      setUserEmail(session.user.email ?? "");
-      setIsAdmin(admin);
-      setAuthChecked(true);
-      if (!admin) nav("/", { replace: true });
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [nav]);
+  const closeAdmin = useCallback(() => {
+    closeAdminPanel();
+  }, [closeAdminPanel]);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -79,11 +58,11 @@ const Admin = () => {
     else setInvites(data);
   }, []);
 
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
-  useEffect(() => { if (isMasterAdmin) loadInvites(); }, [isMasterAdmin, loadInvites]);
+  useEffect(() => { if (isAdminPanelOpen) load(); }, [isAdminPanelOpen, load]);
+  useEffect(() => { if (isAdminPanelOpen && isMasterAdmin) loadInvites(); }, [isAdminPanelOpen, isMasterAdmin, loadInvites]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdminPanelOpen) return;
     const ch = supabase
       .channel("bookings-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => load())
@@ -91,7 +70,7 @@ const Admin = () => {
         if (status === "SUBSCRIBED") load();
       });
     return () => { supabase.removeChannel(ch); };
-  }, [isAdmin, load]);
+  }, [isAdminPanelOpen, load]);
 
   const approved = useMemo(() => bookings.filter((b) => b.status === "approved"), [bookings]);
   const pending = useMemo(() => bookings.filter((b) => b.status === "pending"), [bookings]);
@@ -100,18 +79,37 @@ const Admin = () => {
     approved.filter((a) => a.id !== b.id && overlaps(new Date(b.start_time), new Date(b.end_time), new Date(a.start_time), new Date(a.end_time)));
 
   const approve = async (b: Booking) => {
+    if (!(await ensureAdminSession())) return;
     setBookings((prev) => prev.map((x) => x.id === b.id ? { ...x, status: "approved" } : x));
     const { error } = await supabase.rpc("approve_booking", { _booking_id: b.id });
     if (error) { toast.error(error.message); load(); } else toast.success("Approved");
   };
 
-  const reject = async (b: Booking) => {
-    setBookings((prev) => prev.map((x) => x.id === b.id ? { ...x, status: "rejected" } : x));
-    const { error } = await supabase.rpc("reject_booking", { _booking_id: b.id });
-    if (error) { toast.error(error.message); load(); } else toast.success("Rejected");
+  const reject = (b: Booking) => {
+    setPendingRejectDelete(b);
+  };
+
+  const confirmRejectDelete = async () => {
+    if (!pendingRejectDelete) return;
+    if (!(await ensureAdminSession())) return;
+    const target = pendingRejectDelete;
+    setPendingRejectDelete(null);
+    setBookings((prev) => prev.filter((x) => x.id !== target.id));
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", target.id)
+      .eq("status", "pending");
+    if (error) {
+      toast.error(error.message);
+      load();
+      return;
+    }
+    toast.success("Request deleted");
   };
 
   const approveGroupAll = async (items: Booking[]) => {
+    if (!(await ensureAdminSession())) return;
     // Approve every instance, overwriting any conflicting approved bookings
     const conflictIds = Array.from(new Set(items.flatMap((it) => conflictsFor(it).map((c) => c.id))));
     const itemIds = new Set(items.map((it) => it.id));
@@ -130,6 +128,7 @@ const Admin = () => {
   };
 
   const overwriteApprove = async (b: Booking, conflicts: Booking[]) => {
+    if (!(await ensureAdminSession())) return;
     const conflictIds = conflicts.map((c) => c.id);
     const conflictIdSet = new Set(conflictIds);
     setBookings((prev) => prev.map((x) => {
@@ -142,6 +141,7 @@ const Admin = () => {
   };
 
   const remove = async (b: Booking) => {
+    if (!(await ensureAdminSession())) return;
     setPendingDelete(null);
     setBookings((prev) => prev.filter((x) => x.id !== b.id));
     const { error } = await supabase.from("bookings").delete().eq("id", b.id);
@@ -149,6 +149,7 @@ const Admin = () => {
   };
 
   const removeGroup = async (group_id: string) => {
+    if (!(await ensureAdminSession())) return;
     setPendingDelete(null);
     setBookings((prev) => prev.filter((x) => x.group_id !== group_id));
     const { error } = await supabase.from("bookings").delete().eq("group_id", group_id);
@@ -156,6 +157,7 @@ const Admin = () => {
   };
 
   const createInvite = async () => {
+    if (!(await ensureAdminSession())) return;
     setInviteBusy(true);
     try {
       const code = generateInviteCode();
@@ -189,6 +191,7 @@ const Admin = () => {
   };
 
   const deactivateInvite = async (invite: AdminInvite) => {
+    if (!(await ensureAdminSession())) return;
     const { error } = await supabase
       .from("admin_invite_codes")
       .update({ active: false })
@@ -200,9 +203,19 @@ const Admin = () => {
     }
   };
 
-  const signOut = async () => { await supabase.auth.signOut(); nav("/"); };
+  const signOut = async () => { await signOutAdmin(); };
 
-  if (!authChecked) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  if (!isAdminPanelOpen) return null;
+
+  if (!authChecked) {
+    return (
+      <div className="pointer-events-none fixed inset-0 z-[45]">
+        <div className="pointer-events-auto fixed inset-x-3 top-[calc(var(--site-nav-height)+0.5rem)] z-10 mx-auto flex min-h-28 max-w-[min(32rem,calc(100vw-1.5rem))] items-center justify-center rounded-[clamp(1.25rem,4vw,2rem)] border bg-background shadow-elev sm:inset-x-auto sm:right-4 sm:top-[calc(var(--site-nav-height)+0.75rem)] sm:mx-0 sm:w-[min(32rem,calc(100vw-2rem))]">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Group pending by group_id
   const pendingGroups: Record<string, Booking[]> = {};
@@ -212,24 +225,25 @@ const Admin = () => {
     else pendingSingles.push(p);
   }
 
-  return (
-    <div className="app-page-bg min-h-screen page-transition">
-      <header className="border-b bg-card/40 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+  const panel = (
+    <div className="flex max-h-[min(calc(100svh-var(--site-nav-height)-1rem),46rem)] w-full flex-col overflow-hidden rounded-[clamp(1.25rem,4vw,2rem)] border bg-background shadow-elev">
+      <header className="shrink-0 border-b bg-card/40 backdrop-blur">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
           <div className="flex min-w-0 items-center gap-3 hero-enter">
-            <Button variant="ghost" size="sm" asChild><Link to="/"><ArrowLeft className="h-4 w-4" /> Back</Link></Button>
+            <Button variant="ghost" size="sm" onClick={closeAdmin}><X className="h-4 w-4" /> Close</Button>
             <h1 className="font-display text-[clamp(1.5rem,7vw,2rem)] text-primary">Admin</h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
+          <Button size="sm" onClick={() => { setEditing(null); setBookingFormOpen(true); }}>
+            <Plus className="h-4 w-4" /> Add Booking
+          </Button>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+      <main className="w-full flex-1 overflow-y-auto px-4 py-5 sm:px-5" data-lenis-prevent>
         <Tabs defaultValue="pending">
           <TabsList className="h-auto max-w-full flex-wrap justify-start overflow-x-auto">
             <TabsTrigger value="pending">Pending ({pending.length})</TabsTrigger>
             <TabsTrigger value="approved">Approved ({approved.length})</TabsTrigger>
-            <TabsTrigger value="all">All ({bookings.length})</TabsTrigger>
             {isMasterAdmin && <TabsTrigger value="invites">Invites</TabsTrigger>}
           </TabsList>
 
@@ -280,10 +294,6 @@ const Admin = () => {
           <TabsContent value="approved" className="space-y-2">
             {approved.length === 0 && <p className="text-muted-foreground italic py-8 text-center">No approved bookings.</p>}
             {approved.map((b) => <BookingRow key={b.id} b={b} onEdit={() => setEditing(b)} onDelete={() => setPendingDelete(b)} />)}
-          </TabsContent>
-
-          <TabsContent value="all" className="space-y-2">
-            {bookings.map((b) => <BookingRow key={b.id} b={b} onEdit={() => setEditing(b)} onDelete={() => setPendingDelete(b)} showStatus />)}
           </TabsContent>
 
           {isMasterAdmin && (
@@ -347,11 +357,22 @@ const Admin = () => {
         </Tabs>
       </main>
 
+      <footer className="shrink-0 border-t bg-card/40 px-4 py-3 sm:px-5">
+        <div className="flex w-full justify-end">
+          <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
+        </div>
+      </footer>
+
       <BookingForm
-        open={!!editing}
-        onClose={() => setEditing(null)}
+        open={bookingFormOpen || !!editing}
+        onClose={() => {
+          setBookingFormOpen(false);
+          setEditing(null);
+        }}
         approvedBookings={approved}
         editing={editing}
+        adminMode
+        ensureAdminSession={ensureAdminSession}
         onSubmitted={load}
       />
 
@@ -378,6 +399,30 @@ const Admin = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!pendingRejectDelete} onOpenChange={(open) => !open && setPendingRejectDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this pending request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the pending booking request from {pendingRejectDelete?.name}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRejectDelete}>Delete request</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[45]">
+      <button type="button" className="pointer-events-auto fixed inset-x-0 bottom-0 top-[var(--site-nav-height)] cursor-default" aria-label="Close admin panel" onClick={closeAdmin} />
+      <div className="pointer-events-auto fixed inset-x-3 top-[calc(var(--site-nav-height)+0.5rem)] z-10 mx-auto max-w-[min(42rem,calc(100vw-1.5rem))] animate-admin-dropdown sm:inset-x-auto sm:right-4 sm:top-[calc(var(--site-nav-height)+0.75rem)] sm:mx-0 sm:w-[min(42rem,calc(100vw-2rem))]">
+        {panel}
+      </div>
     </div>
   );
 };

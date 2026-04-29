@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, Image as ImageIcon, Loader2, Pencil, Upload } from "lucide-react";
+import { Download, Image as ImageIcon, Loader2, Pencil, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SiteNav } from "@/components/SiteNav";
 import { Reveal } from "@/components/Reveal";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
-import type { Session } from "@supabase/supabase-js";
 import { getErrorMessage } from "@/lib/errors";
+import { useAdmin } from "@/hooks/useAdmin";
 
 type BacklineContent = Tables<"backline_content">;
 type SectionKey = "gear" | "rates";
@@ -21,6 +20,11 @@ type ContentType = "pdf" | "image" | "text";
 const SECTION_LABELS: Record<SectionKey, string> = {
   gear: "Gear",
   rates: "Rates",
+};
+
+const DOWNLOAD_FILE_NAMES: Record<SectionKey, string> = {
+  gear: "equipment-list.pdf",
+  rates: "rate-card.pdf",
 };
 
 const DEFAULT_CONTENT: Record<SectionKey, BacklineContent> = {
@@ -52,7 +56,7 @@ const DEFAULT_CONTENT: Record<SectionKey, BacklineContent> = {
 
 const Backline = () => {
   const [content, setContent] = useState<Record<SectionKey, BacklineContent>>(DEFAULT_CONTENT);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, ensureAdminSession } = useAdmin();
   const [editing, setEditing] = useState<BacklineContent | null>(null);
 
   const sections = useMemo(() => [content.gear, content.rates], [content]);
@@ -86,20 +90,6 @@ const Backline = () => {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  useEffect(() => {
-    const check = async (session: Session | null) => {
-      if (!session) {
-        setIsAdmin(false);
-        return;
-      }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id);
-      setIsAdmin(!!data?.some((r) => r.role === "admin"));
-    };
-    supabase.auth.getSession().then(({ data: { session } }) => check(session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setTimeout(() => check(session), 0));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
   return (
     <div className="app-page-bg relative min-h-screen overflow-hidden page-transition">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
@@ -107,15 +97,10 @@ const Backline = () => {
         <div className="absolute right-[4%] top-[22%] h-[clamp(7rem,22vw,13rem)] w-[clamp(7rem,22vw,13rem)] rotate-12 bg-[hsl(190_60%_45%/0.12)] animate-float-slower" />
         <div className="absolute bottom-[10%] left-[28%] h-0 w-0 border-l-[clamp(3rem,10vw,6rem)] border-r-[clamp(3rem,10vw,6rem)] border-b-[clamp(5rem,16vw,10rem)] border-l-transparent border-r-transparent border-b-[hsl(45_85%_55%/0.14)]" />
       </div>
-      <SiteNav />
-
       <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
         <section className="hero-enter border-b pb-8">
           <div className="min-w-0">
             <h1 className="font-display text-[clamp(3rem,13vw,5rem)] text-primary leading-none">Backline</h1>
-            <p className="mt-3 max-w-2xl text-muted-foreground">
-              View our gear and rates. Each section can be shared as text, an image, or a downloadable PDF.
-            </p>
           </div>
         </section>
 
@@ -134,6 +119,7 @@ const Backline = () => {
 
       <BacklineContentDialog
         editing={editing}
+        ensureAdminSession={ensureAdminSession}
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
@@ -153,11 +139,39 @@ const BacklineContentCard = ({
   isAdmin: boolean;
   onEdit: () => void;
 }) => {
-  const publicUrl = item.file_path
-    ? supabase.storage.from("backline-documents").getPublicUrl(item.file_path).data.publicUrl
-    : "";
+  const [objectUrl, setObjectUrl] = useState("");
   const isPdf = item.content_type === "pdf";
   const isImage = item.content_type === "image";
+
+  useEffect(() => {
+    let active = true;
+    let href = "";
+
+    const loadPreview = async () => {
+      if (!item.file_path || (!isPdf && !isImage)) {
+        setObjectUrl("");
+        return;
+      }
+      const { data, error } = await supabase.storage.from("backline-documents").download(item.file_path);
+      if (error) {
+        if (active) {
+          setObjectUrl("");
+          toast.error(error.message);
+        }
+        return;
+      }
+      href = URL.createObjectURL(data);
+      if (active) setObjectUrl(href);
+      else URL.revokeObjectURL(href);
+    };
+
+    void loadPreview();
+
+    return () => {
+      active = false;
+      if (href) URL.revokeObjectURL(href);
+    };
+  }, [isImage, isPdf, item.file_path]);
 
   return (
     <article className="flex h-full min-h-[24rem] flex-col rounded-2xl border bg-card p-5 shadow-soft">
@@ -171,45 +185,54 @@ const BacklineContentCard = ({
           </h2>
         </div>
         {isAdmin && (
-          <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${item.title}`}>
+          <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${item.title}`} className="admin-reveal">
             <Pencil className="h-4 w-4" />
           </Button>
         )}
       </div>
 
       <div className="mt-5 flex flex-1 flex-col">
-        {isPdf && publicUrl ? (
+        {isPdf && objectUrl ? (
           <div className="flex flex-1 flex-col rounded-xl border bg-background/60 p-3">
             <div className="min-h-[clamp(24rem,70svh,42rem)] flex-1 overflow-y-auto rounded-lg border bg-background" data-lenis-prevent>
               <iframe
-                src={`${publicUrl}#toolbar=0&navpanes=0`}
+                src={`${objectUrl}#toolbar=0&navpanes=0`}
                 title={item.title}
                 className="h-[clamp(24rem,70svh,42rem)] w-full"
               />
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <Button asChild className="w-full sm:w-auto">
-                <a href={publicUrl} download>
+                <a
+                  href="#download"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void downloadBacklineFile(item);
+                  }}
+                >
                   <Download className="h-4 w-4" /> Download
-                </a>
-              </Button>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" /> Open
                 </a>
               </Button>
             </div>
           </div>
-        ) : isImage && publicUrl ? (
+        ) : isImage && objectUrl ? (
           <div className="space-y-3">
-            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border bg-background">
-              <img src={publicUrl} alt={item.title} className="max-h-[clamp(22rem,68svh,40rem)] w-full object-contain" />
-            </a>
-            <Button asChild variant="outline" className="w-full">
-              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" /> Open image
-              </a>
-            </Button>
+            <div className="block overflow-hidden rounded-xl border bg-background">
+              <img src={objectUrl} alt={item.title} className="max-h-[clamp(22rem,68svh,40rem)] w-full object-contain" />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button asChild className="w-full sm:w-auto">
+                <a
+                  href="#download"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void downloadBacklineFile(item);
+                  }}
+                >
+                  <Download className="h-4 w-4" /> Download
+                </a>
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex-1 whitespace-pre-wrap rounded-xl border bg-background/60 p-4 text-sm leading-relaxed text-foreground/80">
@@ -221,12 +244,58 @@ const BacklineContentCard = ({
   );
 };
 
+const downloadBacklineFile = async (item: BacklineContent) => {
+  if (!item.file_path) return;
+  try {
+    const { data, error } = await supabase.storage.from("backline-documents").download(item.file_path);
+    if (error) throw error;
+
+    const sectionKey = item.section_key as SectionKey;
+    const fallbackName = item.content_type === "pdf"
+      ? DOWNLOAD_FILE_NAMES[sectionKey] ?? `${slugify(item.title)}.pdf`
+      : cleanFileName(item.file_name) ?? `${slugify(item.title)}.${extensionFromMime(item.mime_type)}`;
+    const href = URL.createObjectURL(data);
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = fallbackName;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(href);
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error, "Download failed"));
+  }
+};
+
+const slugify = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "backline-file";
+
+const cleanFileName = (value: string | null) => {
+  if (!value) return null;
+  const cleaned = value.replace(/[^\w.\- ]+/g, "").trim();
+  return cleaned || null;
+};
+
+const extensionFromMime = (mimeType: string | null) => {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  if (mimeType === "image/gif") return "gif";
+  return "jpg";
+};
+
 const BacklineContentDialog = ({
   editing,
+  ensureAdminSession,
   onClose,
   onSaved,
 }: {
   editing: BacklineContent | null;
+  ensureAdminSession: () => Promise<boolean>;
   onClose: () => void;
   onSaved: () => void;
 }) => {
@@ -246,6 +315,7 @@ const BacklineContentDialog = ({
 
   const save = async () => {
     if (!editing) return;
+    if (!(await ensureAdminSession())) return;
     if (!title.trim()) {
       toast.error("Title is required");
       return;

@@ -9,11 +9,11 @@ import { DayBox } from "@/components/DayBox";
 import { DayDetailDialog } from "@/components/DayDetailDialog";
 import { BookingForm } from "@/components/BookingForm";
 import { ReminderSignup } from "@/components/ReminderSignup";
-import { SiteNav } from "@/components/SiteNav";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import bauhausBg from "@/assets/bauhaus-music-bg.jpg";
 import { calendarFilename, createIcsCalendar, downloadIcs } from "@/lib/ics";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const Index = () => {
   const [anchor, setAnchor] = useState<Date>(new Date());
@@ -21,6 +21,7 @@ const Index = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [openDay, setOpenDay] = useState<Date | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const { isAdmin, ensureAdminSession } = useAdmin();
 
   const days = getWeekDays(anchor);
   const { start, end } = weekRange(anchor);
@@ -44,6 +45,7 @@ const Index = () => {
     const { data } = await supabase.from("events").select("*").order("event_date", { ascending: true });
     if (data) setEvents(data as EventItem[]);
   }, []);
+
   // Realtime updates — optimistic for DELETE so removed bookings vanish instantly
   useEffect(() => {
     const fallbackLoad = window.setTimeout(() => {
@@ -114,8 +116,6 @@ const Index = () => {
         <div className="absolute bottom-[6%] left-1/4 h-0 w-0 border-l-[clamp(3rem,9vw,5rem)] border-r-[clamp(3rem,9vw,5rem)] border-b-[clamp(5rem,15vw,9rem)] border-l-transparent border-r-transparent border-b-[hsl(80_25%_40%/0.10)] animate-float-slow" />
       </div>
 
-      <SiteNav />
-
       <header className="border-b bg-card/60 backdrop-blur relative z-30">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center gap-4 sm:gap-6 min-w-0">
@@ -129,7 +129,7 @@ const Index = () => {
             onClick={() => setFormOpen(true)}
             className="relative z-10 min-h-12 rounded-full px-5 text-base shadow-elev sm:px-8 sm:text-lg"
           >
-            <Plus className="h-5 w-5" /> Book
+            <Plus className="h-5 w-5" /> {isAdmin ? "Add Booking" : "Book"}
           </Button>
         </div>
       </header>
@@ -199,6 +199,8 @@ const Index = () => {
         onClose={() => setFormOpen(false)}
         approvedBookings={bookings}
         onSubmitted={load}
+        adminMode={isAdmin}
+        ensureAdminSession={ensureAdminSession}
       />
     </div>
   );

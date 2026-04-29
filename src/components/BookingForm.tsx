@@ -34,16 +34,19 @@ interface Props {
   onSubmitted: () => void;
   /** When provided, the form edits this booking instead of creating a new one. */
   editing?: Booking | null;
+  adminMode?: boolean;
+  ensureAdminSession?: () => Promise<boolean>;
 }
 
 type Recurrence = "none" | "daily" | "weekly" | "monthly";
+type BookingFormErrors = Partial<Record<"name" | "contact" | "date" | "startTime" | "endTime" | "recurrenceEnd" | "turnstile", string>>;
 
 const schema = z.object({
-  name: z.string().trim().min(1, "Required").max(100),
-  contact: z.string().trim().min(1, "Required").max(100),
+  name: z.string().trim().min(1, "Name is required.").max(100, "Name must be 100 characters or fewer."),
+  contact: z.string().trim().min(1, "Contact is required.").max(100, "Contact must be 100 characters or fewer."),
 });
 
-export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, editing }: Props) => {
+export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, editing, adminMode = false, ensureAdminSession }: Props) => {
   const today = format(new Date(), "yyyy-MM-dd");
   const isEdit = !!editing;
   const [name, setName] = useState("");
@@ -58,6 +61,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
   const [recurrenceEnd, setRecurrenceEnd] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [errors, setErrors] = useState<BookingFormErrors>({});
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
@@ -77,17 +81,36 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
       setRgb([editing.color_r, editing.color_g, editing.color_b]);
       setRecurrence("none");
       setRecurrenceEnd("");
+      setErrors({});
     } else {
       setName(""); setContact(""); setDate(today); setStartTime("19:00");
       setUseDuration(true); setDurationH(2); setEndTime("21:00");
       setRgb([180, 140, 200]); setRecurrence("none"); setRecurrenceEnd("");
       setTurnstileToken("");
+      setErrors({});
       setTurnstileResetSignal((value) => value + 1);
     }
   }, [open, today, editing]);
 
   const handleTurnstileToken = useCallback((token: string) => {
     setTurnstileToken(token);
+    setErrors((current) => ({ ...current, turnstile: token ? undefined : current.turnstile }));
+  }, []);
+
+  const handleTurnstileExpired = useCallback(() => {
+    setTurnstileToken("");
+    setErrors((current) => ({
+      ...current,
+      turnstile: "Verification expired. Please complete the challenge again.",
+    }));
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken("");
+    setErrors((current) => ({
+      ...current,
+      turnstile: "Verification failed to load. Please try again.",
+    }));
   }, []);
 
   // Computed start/end
@@ -127,16 +150,36 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
     return null;
   }, [start, end, recurrence, recurrenceEnd, approvedBookings, editing]);
 
-  const submit = async () => {
+  const validate = () => {
+    const nextErrors: BookingFormErrors = {};
     const parsed = schema.safeParse({ name, contact });
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0].message, { duration: 2000 });
-      return;
+      for (const issue of parsed.error.errors) {
+        const field = issue.path[0];
+        if (field === "name" || field === "contact") nextErrors[field] = issue.message;
+      }
     }
-    if (!(end > start)) {
-      toast.error("End must be after start", { duration: 2000 });
-      return;
+    if (!date) nextErrors.date = "Date is required.";
+    if (!startTime) nextErrors.startTime = "Start time is required.";
+    if (!useDuration && !endTime) nextErrors.endTime = "End time is required.";
+    if (!(end > start)) nextErrors.endTime = "End time must be after start time.";
+    if (!isEdit && recurrence !== "none" && !recurrenceEnd) {
+      nextErrors.recurrenceEnd = "Repeat-until date is required for recurring bookings.";
     }
+    if (!isEdit && !adminMode && !turnstileSiteKey) {
+      nextErrors.turnstile = "Booking verification is not configured.";
+    }
+    if (!isEdit && !adminMode && turnstileSiteKey && !turnstileToken) {
+      nextErrors.turnstile = nextErrors.turnstile || "Please complete the verification challenge.";
+    }
+    setErrors(nextErrors);
+    return nextErrors;
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) return;
     if (conflict) {
       toast.error(conflict, { duration: 2000 });
       return;
@@ -172,11 +215,48 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
         end_time: inst.end.toISOString(),
       }));
 
+      if (adminMode) {
+        if (ensureAdminSession && !(await ensureAdminSession())) return;
+        let groupId: string | null = null;
+        if (recurrence !== "none" && rows.length > 1) {
+          const { data: group, error: groupError } = await supabase
+            .from("booking_groups")
+            .insert({
+              recurrence,
+              recurrence_end: recurrenceEnd || null,
+            })
+            .select("id")
+            .single();
+          if (groupError) throw groupError;
+          groupId = group.id;
+        }
+
+        const { error } = await supabase.from("bookings").insert(
+          rows.map((row) => ({
+            ...row,
+            group_id: groupId,
+            name: name.trim(),
+            contact: contact.trim(),
+            color_r: rgb[0],
+            color_g: rgb[1],
+            color_b: rgb[2],
+            status: "approved" as const,
+          })),
+        );
+        if (error) throw error;
+        toast.success("Booking added to calendar.");
+        onSubmitted();
+        onClose();
+        return;
+      }
+
       if (!turnstileSiteKey) {
-        throw new Error("Booking verification is not configured");
+        setErrors((current) => ({ ...current, turnstile: "Booking verification is not configured." }));
+        return;
       }
       if (!turnstileToken) {
-        throw new Error("Please complete the verification challenge");
+        setErrors((current) => ({ ...current, turnstile: "Please complete the verification challenge." }));
+        return;
       }
 
       const { data, error } = await supabase.functions.invoke("submit-booking", {
@@ -218,8 +298,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
       onSubmitted();
       onClose();
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, "Failed to submit"), { duration: 2000 });
+      toast.error(getErrorMessage(error, "Failed to submit"), { duration: 3500 });
       setTurnstileToken("");
+      setErrors((current) => ({
+        ...current,
+        turnstile: "Please complete a fresh verification challenge before trying again.",
+      }));
       setTurnstileResetSignal((value) => value + 1);
     } finally {
       setSubmitting(false);
@@ -232,9 +316,13 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[min(90svh,48rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(32rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl animate-pop-in">
         <DialogHeader>
-          <DialogTitle className="font-display text-[clamp(1.5rem,6vw,2rem)]">{isEdit ? "Edit booking" : "Request a booking"}</DialogTitle>
+          <DialogTitle className="font-display text-[clamp(1.5rem,6vw,2rem)]">{isEdit ? "Edit booking" : adminMode ? "Add Booking" : "Request a booking"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Changes apply immediately to this booking." : "Pending requests are reviewed by an admin before appearing."}
+            {isEdit
+              ? "Changes apply immediately to this booking."
+              : adminMode
+                ? "Add this booking directly to the approved calendar."
+                : "Pending requests are reviewed by an admin before appearing."}
           </DialogDescription>
         </DialogHeader>
 
@@ -242,22 +330,67 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setErrors((current) => ({ ...current, name: undefined }));
+                }}
+                maxLength={100}
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "booking-name-error" : undefined}
+              />
+              {errors.name && <p id="booking-name-error" className="text-xs text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="contact">Telegram handle</Label>
-              <Input id="contact" placeholder="@yourhandle" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={100} />
+              <Input
+                id="contact"
+                placeholder="@yourhandle"
+                value={contact}
+                onChange={(e) => {
+                  setContact(e.target.value);
+                  setErrors((current) => ({ ...current, contact: undefined }));
+                }}
+                maxLength={100}
+                aria-invalid={!!errors.contact}
+                aria-describedby={errors.contact ? "booking-contact-error" : undefined}
+              />
+              {errors.contact && <p id="booking-contact-error" className="text-xs text-destructive">{errors.contact}</p>}
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setErrors((current) => ({ ...current, date: undefined, endTime: undefined }));
+                }}
+                aria-invalid={!!errors.date}
+                aria-describedby={errors.date ? "booking-date-error" : undefined}
+              />
+              {errors.date && <p id="booking-date-error" className="text-xs text-destructive">{errors.date}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="start">Start time</Label>
-              <Input id="start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <Input
+                id="start"
+                type="time"
+                value={startTime}
+                onChange={(e) => {
+                  setStartTime(e.target.value);
+                  setErrors((current) => ({ ...current, startTime: undefined, endTime: undefined }));
+                }}
+                aria-invalid={!!errors.startTime}
+                aria-describedby={errors.startTime ? "booking-start-error" : undefined}
+              />
+              {errors.startTime && <p id="booking-start-error" className="text-xs text-destructive">{errors.startTime}</p>}
             </div>
           </div>
 
@@ -272,12 +405,33 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                   <span className="text-muted-foreground">Duration</span>
                   <span className="font-medium tabular-nums">{durationH.toFixed(1)} h</span>
                 </div>
-                <Slider min={0.5} max={8} step={0.5} value={[durationH]} onValueChange={(v) => setDurationH(v[0])} />
+                <Slider
+                  min={0.5}
+                  max={8}
+                  step={0.5}
+                  value={[durationH]}
+                  onValueChange={(v) => {
+                    setDurationH(v[0]);
+                    setErrors((current) => ({ ...current, endTime: undefined }));
+                  }}
+                />
+                {errors.endTime && <p className="text-xs text-destructive">{errors.endTime}</p>}
               </div>
             ) : (
               <div className="space-y-1.5">
                 <Label htmlFor="end">End time</Label>
-                <Input id="end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <Input
+                  id="end"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    setErrors((current) => ({ ...current, endTime: undefined }));
+                  }}
+                  aria-invalid={!!errors.endTime}
+                  aria-describedby={errors.endTime ? "booking-end-error" : undefined}
+                />
+                {errors.endTime && <p id="booking-end-error" className="text-xs text-destructive">{errors.endTime}</p>}
               </div>
             )}
           </div>
@@ -317,7 +471,13 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Recurrence</Label>
-                <Select value={recurrence} onValueChange={(value) => setRecurrence(value as Recurrence)}>
+                <Select
+                  value={recurrence}
+                  onValueChange={(value) => {
+                    setRecurrence(value as Recurrence);
+                    setErrors((current) => ({ ...current, recurrenceEnd: undefined }));
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
@@ -329,17 +489,31 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="rend">Repeat until</Label>
-                <Input id="rend" type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} disabled={recurrence === "none"} />
+                <Input
+                  id="rend"
+                  type="date"
+                  value={recurrenceEnd}
+                  onChange={(e) => {
+                    setRecurrenceEnd(e.target.value);
+                    setErrors((current) => ({ ...current, recurrenceEnd: undefined }));
+                  }}
+                  disabled={recurrence === "none"}
+                  aria-invalid={!!errors.recurrenceEnd}
+                  aria-describedby={errors.recurrenceEnd ? "booking-recurrence-error" : undefined}
+                />
+                {errors.recurrenceEnd && <p id="booking-recurrence-error" className="text-xs text-destructive">{errors.recurrenceEnd}</p>}
               </div>
             </div>
           )}
 
-          {!isEdit && (
+          {!isEdit && !adminMode && (
             <div className="rounded-xl border bg-muted/30 p-3">
               {turnstileSiteKey ? (
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
                   onTokenChange={handleTurnstileToken}
+                  onExpired={handleTurnstileExpired}
+                  onError={handleTurnstileError}
                   resetSignal={turnstileResetSignal}
                 />
               ) : (
@@ -347,6 +521,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                   Booking verification is not configured. Add `VITE_TURNSTILE_SITE_KEY` before accepting public requests.
                 </p>
               )}
+              {errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}
             </div>
           )}
 
@@ -362,8 +537,8 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
 
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={onClose} disabled={submitting} className="w-full sm:w-auto">Cancel</Button>
-            <Button onClick={submit} disabled={submitting || !!conflict || (!isEdit && !turnstileToken)} className="w-full sm:w-auto">
-              {submitting ? "Saving…" : isEdit ? "Save changes" : "Submit request"}
+            <Button onClick={submit} disabled={submitting || !!conflict} className="w-full sm:w-auto">
+              {submitting ? "Saving…" : isEdit ? "Save changes" : adminMode ? "Confirm" : "Submit request"}
             </Button>
           </div>
         </div>

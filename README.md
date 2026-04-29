@@ -22,6 +22,7 @@ This is a responsive band-room management site for booking practice sessions, sh
 
 ### Landing Page
 - View a Bauhaus-inspired homepage built for desktop and mobile.
+- Use the always-visible top nav to jump back home, switch theme, or access admin tools.
 - Jump quickly to bookings, events, and services.
 - See the next upcoming gig with poster, title, and date.
 - Find public contact cards for booking, backline, rates, or gig details.
@@ -41,7 +42,7 @@ This is a responsive band-room management site for booking practice sessions, sh
 
 ### Backline And Rates
 - View Gear and Rates sections.
-- Open or download PDFs.
+- Preview PDFs and download files with clean filenames.
 - View image or text-based backline details.
 - Use the page comfortably on mobile with horizontal scrolling where needed.
 
@@ -53,7 +54,9 @@ Approved band leaders can:
 
 - Sign in with Supabase Auth.
 - Register through invite-protected access.
-- Approve, reject, edit, and delete booking requests.
+- Use a global admin drawer without leaving the current page.
+- Approve, edit, and delete booking requests.
+- Add bookings directly to the approved calendar.
 - Resolve booking conflicts.
 - Manage recurring booking groups.
 - Create and update events with poster uploads.
