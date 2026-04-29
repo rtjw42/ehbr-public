@@ -230,7 +230,7 @@ const Landing = () => {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h2 className="font-display text-[clamp(2.25rem,9vw,3rem)] text-primary">Contact Us</h2>
-                    <p className="mt-2 text-muted-foreground">Reach out for bookings, backline, rates, or gig details.</p>
+                    <p className="mt-2 text-muted-foreground">Reach out for bookings, backline, rates, gig details, or a quick hello.</p>
                   </div>
                 {isAdmin && (
                   <Button

@@ -8,9 +8,13 @@ This is a responsive band-room management site for booking practice sessions, sh
 
 ## Screenshots
 
-| Landing Page | Bookings | Events |
-|---|---|---|
-| <img width="1920" height="1004" alt="Screenshot 2026-04-29 at 16 06 45" src="https://github.com/user-attachments/assets/d6e8a594-fd57-4f4a-8288-9b9746cc89aa" /> | <img width="1920" height="1004" alt="Screenshot 2026-04-29 at 16 07 17" src="https://github.com/user-attachments/assets/43191038-9a70-46c7-adbc-a191c9f133fe" /> | <img width="1920" height="1000" alt="Screenshot 2026-04-29 at 16 08 36" src="https://github.com/user-attachments/assets/54f421bd-7241-461f-9754-652052d99ea6" /> |
+| Landing Page | Bookings |
+|---|---|
+| <img width="1920" height="1004" alt="Landing page with Bauhaus hero and upcoming gig TV" src="./src/assets/readme/landing-page.png" /> | <img width="1920" height="1004" alt="Band room weekly booking calendar" src="./src/assets/readme/bookings-page.png" /> |
+
+| Backline | Events |
+|---|---|
+| <img width="1920" height="1004" alt="Backline gear and rates PDF preview cards" src="./src/assets/readme/backline-page.png" /> | <img width="1920" height="1004" alt="Upcoming gigs event listing with poster" src="./src/assets/readme/events-page.png" /> |
 
 ---
 

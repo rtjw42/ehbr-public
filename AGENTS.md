@@ -4,44 +4,47 @@
 One local folder: `band-room-eh` (private working repo).
 Two GitHub remotes:
 - `private` → https://github.com/rtjw42/band-room-eh.git (all active work)
-- `public` → https://github.com/rtjw42/eusoff-bandits-public.git (recruiter-facing)
+- `public` → https://github.com/rtjw42/ehbr-public.git (recruiter-facing)
 
 ## Stack
-- Frontend: React + Vite (localhost:8080)
+- Frontend: React + Vite (localhost:5173)
 - Backend/Auth: Supabase
 - Deployment: Vercel
 
+## Branch Meaning
+- `dev` → The Workshop. Messy commits fine. Pushes to `private` only.
+- `release` → The Stage. Clean commits only. Pushes to `public`.
+
 ## Git Rules
-- All development happens on `main`, pushed to `private` only
-- `public-main` is the clean release branch — one squash commit per feature
-- NEVER push `main` directly to `public`
-- NEVER suggest `--force` pushes to `public`
+- All development happens on `dev`, pushed to `private` only
+- `release` is the clean showcase branch — one squash commit per feature
+- NEVER push `dev` directly to `public`
+- NEVER force push to `public`
 
 ## Saving Work
-```bash
+git checkout dev
 git add .
 git commit -m "<descriptive message>"
-git push private main
-```
+git push private dev
 
 ## Publishing a Feature (only when I say it's ready)
-```bash
-git checkout public-main
-git merge --squash main
+git checkout release
+git merge --squash dev
 git commit -m "feat: <clean description>"
-git push public public-main:main
-git checkout main
-```
+git push public release:main
+git checkout dev
 
 ## Multi-Computer Rule
-- Start every session: `git pull private main`
-- End every session: push to `private main` before switching computers
+- Start every session: `git pull private dev`
+- End every session: push to `private dev` before switching computers
 
 ## Commit Style
-- `main` → casual, descriptive (e.g. "fixing booking form css again")
-- `public-main` → clean, professional (e.g. "feat: add booking history page")
+- `dev` → casual, descriptive (e.g. "fixing booking form css again")
+- `release` → clean, professional (e.g. "feat: add booking history page")
 
 ## Rules
 - Never push to public unless I explicitly say the feature is done
-- Always confirm which branch I'm on before any git operation
-- Always pull from private at the start of a session
+- Always confirm which branch I am on before any git operation
+- Always pull from private dev at the start of a session
+
+Before committing or pushing, run `git status --short --branch` and confirm the branch/remotes match the intended target.
