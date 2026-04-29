@@ -1,0 +1,500 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Band Room Booking - Cream/White minimalist design system. All colors HSL. */
+
+@layer base {
+  :root {
+    --site-nav-height: 3.5rem;
+    --background: 42 38% 96%;        /* warm cream */
+    --foreground: 25 20% 18%;
+
+    --card: 40 50% 98%;
+    --card-foreground: 25 20% 18%;
+
+    --popover: 40 50% 99%;
+    --popover-foreground: 25 20% 18%;
+
+    --primary: 25 35% 25%;           /* warm dark cocoa */
+    --primary-foreground: 42 38% 96%;
+
+    --secondary: 38 30% 90%;
+    --secondary-foreground: 25 25% 22%;
+
+    --muted: 38 25% 92%;
+    --muted-foreground: 25 10% 42%;
+
+    --accent: 35 50% 88%;
+    --accent-foreground: 25 30% 22%;
+
+    --destructive: 5 70% 55%;
+    --destructive-foreground: 42 38% 98%;
+
+    --border: 35 20% 86%;
+    --input: 35 20% 86%;
+    --ring: 25 35% 35%;
+
+    --radius: 1rem;
+
+    /* Effects */
+    --shadow-soft: 0 4px 16px -8px hsl(25 30% 25% / 0.12);
+    --shadow-elev: 0 12px 40px -12px hsl(25 30% 20% / 0.18);
+    --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --sidebar-background: 42 38% 96%;
+    --sidebar-foreground: 25 20% 18%;
+    --sidebar-primary: 25 35% 25%;
+    --sidebar-primary-foreground: 42 38% 96%;
+    --sidebar-accent: 35 50% 88%;
+    --sidebar-accent-foreground: 25 30% 22%;
+    --sidebar-border: 35 20% 86%;
+    --sidebar-ring: 25 35% 35%;
+  }
+
+  .dark {
+    --background: 25 15% 10%;
+    --foreground: 42 30% 92%;
+    --card: 25 15% 12%;
+    --card-foreground: 42 30% 92%;
+    --popover: 25 15% 12%;
+    --popover-foreground: 42 30% 92%;
+    --primary: 42 38% 90%;
+    --primary-foreground: 25 20% 14%;
+    --secondary: 25 12% 18%;
+    --secondary-foreground: 42 30% 92%;
+    --muted: 25 10% 18%;
+    --muted-foreground: 35 15% 65%;
+    --accent: 25 12% 22%;
+    --accent-foreground: 42 30% 92%;
+    --destructive: 5 60% 45%;
+    --destructive-foreground: 42 30% 92%;
+    --border: 25 10% 22%;
+    --input: 25 10% 22%;
+    --ring: 42 30% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+}
+
+@layer utilities {
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elev { box-shadow: var(--shadow-elev); }
+
+  /* Marquee scroll for >3 bookings */
+  @keyframes marquee-y {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+  .animate-marquee-y {
+    animation: marquee-y linear infinite;
+  }
+  .animate-marquee-y:hover { animation-play-state: paused; }
+
+  @keyframes pop-in {
+    0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-pop-in { animation: pop-in 0.32s var(--transition-smooth) both; }
+
+  @keyframes fade-out-soft {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-4px); }
+  }
+
+  @keyframes day-in {
+    0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .animate-day-in {
+    animation: day-in 0.45s var(--transition-smooth) both;
+  }
+
+  @keyframes slide-fade-in {
+    0% { opacity: 0; transform: translateX(-6px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  .animate-slide-fade-in {
+    animation: slide-fade-in 0.35s var(--transition-smooth) both;
+  }
+
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    50% { transform: translateY(-20px) translateX(10px); }
+  }
+  .animate-float-slow { animation: float-slow 12s ease-in-out infinite; }
+
+  @keyframes float-slower {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    50% { transform: translateY(25px) translateX(-15px); }
+  }
+  .animate-float-slower { animation: float-slower 18s ease-in-out infinite; }
+
+  /* Bubble slide-in from the right with squash & settle */
+  @keyframes bubble-in-right {
+    0%   { opacity: 0; transform: translate(120%, -50%) scale(0.6); }
+    55%  { opacity: 1; transform: translate(-6%, -50%) scale(1.06); }
+    75%  { transform: translate(2%, -50%) scale(0.97); }
+    100% { transform: translate(0, -50%) scale(1); }
+  }
+  .animate-bubble-in-right {
+    animation: bubble-in-right 0.55s var(--transition-smooth) both;
+  }
+
+  @keyframes admin-top-in {
+    0% { opacity: 0; transform: translateY(-120%) scale(0.96); }
+    70% { opacity: 1; transform: translateY(0.5rem) scale(1.01); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .animate-admin-top-in {
+    animation: admin-top-in 0.34s var(--transition-smooth) both;
+  }
+
+  @keyframes page-in {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .page-transition {
+    animation: page-in 0.42s var(--transition-smooth) both;
+  }
+
+  .route-page-fade {
+    animation: page-in 0.22s var(--transition-smooth) both;
+  }
+
+  .route-transition-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    background: hsl(var(--foreground) / 0.16);
+    opacity: 0;
+    transition: opacity 0.16s var(--transition-smooth);
+  }
+  .route-transition-overlay.is-active {
+    opacity: 1;
+  }
+  .route-transition-logo {
+    width: clamp(2.5rem, 12vw, 4rem);
+    height: clamp(2.5rem, 12vw, 4rem);
+    border-radius: 0.75rem;
+    animation: route-logo-spin 0.36s var(--transition-smooth) both;
+  }
+  @keyframes route-logo-spin {
+    0% { opacity: 0; transform: scale(0.85) rotate(-8deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes hero-enter {
+    0% { opacity: 0; transform: translateY(18px) scale(0.985); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .hero-enter {
+    animation: hero-enter 0.7s var(--transition-smooth) both;
+  }
+  .hero-enter-delay {
+    animation-delay: 120ms;
+  }
+
+  .reveal-up {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity 0.65s var(--transition-smooth),
+      transform 0.65s var(--transition-smooth);
+    will-change: opacity, transform;
+  }
+  .reveal-up.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-transition,
+    .hero-enter,
+    .animate-float-slow,
+    .animate-float-slower,
+    .animate-marquee-y,
+    .animate-pop-in,
+    .animate-day-in,
+    .animate-slide-fade-in,
+    .animate-bubble-in-right {
+      animation: none !important;
+    }
+
+    .animate-admin-top-in,
+    .route-page-fade,
+    .route-transition-logo {
+      animation: none !important;
+    }
+
+    .route-transition-overlay {
+      display: none;
+    }
+
+    .reveal-up {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+/* Route transition and mobile stability overrides. */
+.route-spinner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: hsl(var(--background) / 0.88);
+  opacity: 0;
+  transition: opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.route-spinner-overlay.is-active {
+  opacity: 1;
+}
+
+.route-spinner-ring {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.16rem solid hsl(var(--muted-foreground) / 0.24);
+  border-top-color: hsl(var(--foreground));
+  border-radius: 9999px;
+  animation: route-spinner-spin 0.48s linear infinite;
+}
+
+@keyframes route-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.route-content-fade {
+  animation: route-content-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.route-content-fade.is-entering {
+  animation: route-content-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes route-content-in {
+  from {
+    opacity: 0.88;
+    transform: translateY(0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-admin-dropdown {
+  transform-origin: top right;
+  animation: admin-dropdown-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes admin-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+[role="dialog"] {
+  width: min(calc(100vw - 1rem), calc(100% - 2rem)) !important;
+  max-width: min(32rem, calc(100vw - 1rem)) !important;
+  max-height: min(90svh, 42rem) !important;
+  overflow-y: auto;
+}
+
+.overflow-guard {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.app-page-bg {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 8% 14%, hsl(var(--primary) / 0.10), transparent 24rem),
+    radial-gradient(circle at 92% 18%, hsl(190 60% 45% / 0.10), transparent 22rem),
+    radial-gradient(circle at 38% 92%, hsl(45 85% 55% / 0.10), transparent 24rem),
+    hsl(var(--background));
+}
+
+.app-page-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(90deg, hsl(var(--foreground) / 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, hsl(var(--foreground) / 0.06) 1px, transparent 1px);
+  background-size: clamp(2.5rem, 8vw, 5rem) clamp(2.5rem, 8vw, 5rem);
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+@media (max-width: 374px) {
+  .overflow-guard h1 {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    font-size: clamp(2.5rem, 13.5vw, 3.25rem) !important;
+    line-height: 0.9 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .overflow-guard h1 img {
+    width: clamp(2rem, 9vw, 2.5rem) !important;
+    height: clamp(2rem, 9vw, 2.5rem) !important;
+    flex: 0 0 auto !important;
+  }
+
+  .overflow-guard a[href="/bookings"],
+  .overflow-guard a[href="/events"],
+  .overflow-guard a[href="/backline"] {
+    min-height: 4.25rem !important;
+    min-width: 4.25rem !important;
+    text-align: center !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 0.45in !important;
+    size: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  html,
+  body,
+  #root {
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  nav,
+  header,
+  button,
+  form,
+  input,
+  select,
+  textarea,
+  [role="dialog"],
+  [data-radix-portal],
+  [aria-hidden="true"],
+  .route-transition-overlay,
+  .route-transition-overlay-slow,
+  .route-transition-logo,
+  .route-transition-logo-slow,
+  .route-spinner-overlay,
+  .admin-control,
+  .print-hide {
+    display: none !important;
+  }
+
+  .fixed,
+  .sticky {
+    position: static !important;
+  }
+
+  section,
+  article,
+  main section,
+  main article,
+  main div,
+  .overflow-hidden,
+  .overflow-guard {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  article,
+  section,
+  img,
+  picture {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .min-h-screen,
+  .min-h-\[100vh\],
+  .min-h-\[100svh\],
+  .min-h-\[calc\(100svh-3\.5rem\)\] {
+    min-height: 0 !important;
+  }
+
+}
