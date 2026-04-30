@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, CalendarIcon, Download } from "lucide-react";
 import { addWeeks, format } from "date-fns";
@@ -16,7 +17,13 @@ import { calendarFilename, createIcsCalendar, downloadIcs } from "@/lib/ics";
 import { useAdmin } from "@/hooks/useAdmin";
 
 const Index = () => {
-  const [anchor, setAnchor] = useState<Date>(new Date());
+  const [searchParams] = useSearchParams();
+  const requestedDate = searchParams.get("date");
+  const [anchor, setAnchor] = useState<Date>(() => {
+    if (!requestedDate) return new Date();
+    const parsed = new Date(`${requestedDate}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [openDay, setOpenDay] = useState<Date | null>(null);
@@ -25,6 +32,12 @@ const Index = () => {
 
   const days = getWeekDays(anchor);
   const { start, end } = weekRange(anchor);
+
+  useEffect(() => {
+    if (!requestedDate) return;
+    const parsed = new Date(`${requestedDate}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) setAnchor(parsed);
+  }, [requestedDate]);
 
   const load = useCallback(async () => {
     // pull approved bookings overlapping the window (with 1d slack on each side for spillover display)

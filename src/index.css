@@ -89,16 +89,6 @@
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-elev { box-shadow: var(--shadow-elev); }
 
-  /* Marquee scroll for >3 bookings */
-  @keyframes marquee-y {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
-  }
-  .animate-marquee-y {
-    animation: marquee-y linear infinite;
-  }
-  .animate-marquee-y:hover { animation-play-state: paused; }
-
   @keyframes pop-in {
     0% { opacity: 0; transform: scale(0.92) translateY(8px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -224,7 +214,6 @@
     .hero-enter,
     .animate-float-slow,
     .animate-float-slower,
-    .animate-marquee-y,
     .animate-pop-in,
     .animate-day-in,
     .animate-slide-fade-in,

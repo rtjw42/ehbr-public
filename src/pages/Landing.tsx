@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Reveal } from "@/components/Reveal";
 import { supabase } from "@/integrations/supabase/client";
 import { EventItem } from "@/lib/events";
+import { Booking, bookingDot, fmtTimeRange } from "@/lib/booking-utils";
 import type { Tables } from "@/integrations/supabase/types";
-import { format, isPast } from "date-fns";
+import { endOfDay, format, isPast, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import bauhausBg from "@/assets/bauhaus-music-bg.jpg";
 import { getErrorMessage } from "@/lib/errors";
@@ -30,6 +31,7 @@ type EditableField = {
 
 const Landing = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [contacts, setContacts] = useState<ContactWithFields[]>([]);
   const { isAdmin, showAdminControls, isAdminUiExiting, ensureAdminSession } = useAdmin();
   const [contactOpen, setContactOpen] = useState(false);
@@ -44,6 +46,33 @@ const Landing = () => {
       .then(({ data }) => {
         if (data) setEvents(data as EventItem[]);
       });
+  }, []);
+
+  const loadTodayBookings = async () => {
+    const todayStart = startOfDay(new Date()).toISOString();
+    const todayEnd = endOfDay(new Date()).toISOString();
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("status", "approved")
+      .lte("start_time", todayEnd)
+      .gte("end_time", todayStart)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setTodayBookings((data ?? []) as Booking[]);
+  };
+
+  useEffect(() => {
+    loadTodayBookings();
+    const ch = supabase
+      .channel("landing-today-bookings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => loadTodayBookings())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const nextGig = useMemo(
@@ -206,6 +235,63 @@ const Landing = () => {
                   <div className="absolute -bottom-3 right-[18%] h-5 w-[18%] rotate-6 bg-[#202020]" />
                 </div>
             </Link>
+          </div>
+        </section>
+
+        <section className="border-b bg-card/55 backdrop-blur">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+            <Reveal>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Today</div>
+                  <h2 className="mt-2 font-display text-[clamp(2rem,8vw,3rem)] leading-none text-primary">Room Sessions</h2>
+                </div>
+                <Link
+                  to={`/bookings?date=${format(new Date(), "yyyy-MM-dd")}`}
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                >
+                  View calendar
+                </Link>
+              </div>
+
+              {todayBookings.length === 0 ? (
+                <Link
+                  to={`/bookings?date=${format(new Date(), "yyyy-MM-dd")}`}
+                  className="mt-5 flex min-h-24 items-center justify-center rounded-2xl border border-dashed bg-background/60 px-4 text-sm italic text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                >
+                  No sessions today
+                </Link>
+              ) : (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {todayBookings.slice(0, 4).map((booking) => (
+                    <Link
+                      key={booking.id}
+                      to={`/bookings?date=${format(new Date(), "yyyy-MM-dd")}`}
+                      className="group min-w-0 rounded-2xl border bg-background/70 p-4 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-elev"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className="mt-1 h-3 w-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: bookingDot(booking) }}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-foreground group-hover:text-primary">{booking.name}</div>
+                          <div className="mt-1 text-sm tabular-nums text-muted-foreground">{fmtTimeRange(booking, new Date())}</div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {todayBookings.length > 4 && (
+                    <Link
+                      to={`/bookings?date=${format(new Date(), "yyyy-MM-dd")}`}
+                      className="grid min-h-24 place-items-center rounded-2xl border border-dashed bg-primary/10 p-4 text-center font-display text-2xl text-primary transition-all duration-300 hover:-translate-y-1 hover:bg-primary/15 hover:shadow-soft"
+                    >
+                      +{todayBookings.length - 4} more
+                    </Link>
+                  )}
+                </div>
+              )}
+            </Reveal>
           </div>
         </section>
 

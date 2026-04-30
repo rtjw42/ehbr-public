@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { format, isToday } from "date-fns";
 import { Booking, bookingsForDay } from "@/lib/booking-utils";
 import { EventItem, eventsForDay } from "@/lib/events";
@@ -17,15 +16,8 @@ export const DayBox = ({ day, bookings, events = [], onClick, index = 0 }: Props
   const items = bookingsForDay(bookings, day);
   const dayEvents = eventsForDay(events, day);
   const today = isToday(day);
-  const overflow = items.length > 3;
-  const listRef = useRef<HTMLDivElement>(null);
-  const [duration, setDuration] = useState(0);
-
-  useEffect(() => {
-    if (overflow && listRef.current) {
-      setDuration(Math.max(8, items.length * 2.5));
-    }
-  }, [overflow, items.length]);
+  const visibleItems = items.slice(0, 4);
+  const hiddenCount = Math.max(0, items.length - visibleItems.length);
 
   return (
     <button
@@ -85,25 +77,9 @@ export const DayBox = ({ day, bookings, events = [], onClick, index = 0 }: Props
           <div className="h-full flex items-center justify-center text-xs text-muted-foreground/60 italic">
             free
           </div>
-        ) : overflow ? (
-          <div
-            ref={listRef}
-            className="animate-marquee-y space-y-1.5"
-            style={{ animationDuration: `${duration}s` }}
-          >
-            {[...items, ...items].map((it, idx) => (
-              <BookingChip
-                key={`${it.booking.id}-${idx}`}
-                booking={it.booking}
-                day={day}
-                isContinued={it.isContinued}
-                compact
-              />
-            ))}
-          </div>
         ) : (
           <div className="space-y-1.5">
-            {items.map((it) => (
+            {visibleItems.map((it) => (
               <BookingChip
                 key={it.booking.id}
                 booking={it.booking}
@@ -111,6 +87,11 @@ export const DayBox = ({ day, bookings, events = [], onClick, index = 0 }: Props
                 isContinued={it.isContinued}
               />
             ))}
+            {hiddenCount > 0 && (
+              <div className="rounded-lg border border-dashed border-border/80 bg-background/60 px-2 py-1.5 text-center text-[clamp(0.68rem,2vw,0.75rem)] font-medium text-muted-foreground">
+                +{hiddenCount} more
+              </div>
+            )}
           </div>
         )}
       </div>
