@@ -31,7 +31,7 @@ type EditableField = {
 const Landing = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [contacts, setContacts] = useState<ContactWithFields[]>([]);
-  const { isAdmin, ensureAdminSession } = useAdmin();
+  const { isAdmin, showAdminControls, isAdminUiExiting, ensureAdminSession } = useAdmin();
   const [contactOpen, setContactOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<SiteContact | null>(null);
   const [draggingContactId, setDraggingContactId] = useState<string | null>(null);
@@ -217,14 +217,14 @@ const Landing = () => {
                     <h2 className="font-display text-[clamp(2.25rem,9vw,3rem)] text-primary">Contact Us</h2>
                     <p className="mt-2 text-muted-foreground">Reach out for bookings, backline, rates, gig details, or a quick hello.</p>
                   </div>
-                {isAdmin && (
+                {showAdminControls && (
                   <Button
                     variant="outline"
                     onClick={() => {
                       setEditingContact(null);
                       setContactOpen(true);
                     }}
-                    className="admin-reveal w-full sm:w-auto"
+                    className={`${isAdminUiExiting ? "admin-control-exit" : "admin-reveal"} w-full sm:w-auto`}
                   >
                     <Plus className="h-4 w-4" /> Add contact
                   </Button>
@@ -240,11 +240,18 @@ const Landing = () => {
                     <ContactCard
                       key={contact.id}
                       contact={contact}
-                      isAdmin={isAdmin}
+                      isAdmin={showAdminControls}
+                      isAdminUiExiting={isAdminUiExiting}
                       isDragging={draggingContactId === contact.id}
-                      onDragStart={() => setDraggingContactId(contact.id)}
+                      onDragStart={() => {
+                        if (isAdminUiExiting) return;
+                        setDraggingContactId(contact.id);
+                      }}
                       onDragEnd={() => setDraggingContactId(null)}
-                      onDrop={() => reorderContacts(contact.id)}
+                      onDrop={() => {
+                        if (isAdminUiExiting) return;
+                        reorderContacts(contact.id);
+                      }}
                       onEdit={() => {
                         setEditingContact(contact);
                         setContactOpen(true);
@@ -276,6 +283,7 @@ const Landing = () => {
 const ContactCard = ({
   contact,
   isAdmin,
+  isAdminUiExiting,
   isDragging,
   onDragStart,
   onDragEnd,
@@ -285,6 +293,7 @@ const ContactCard = ({
 }: {
   contact: ContactWithFields;
   isAdmin: boolean;
+  isAdminUiExiting: boolean;
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -293,14 +302,18 @@ const ContactCard = ({
   onDelete: () => void;
 }) => (
   <article
-    draggable={isAdmin}
+    draggable={isAdmin && !isAdminUiExiting}
     onDragStart={(event) => {
+      if (isAdminUiExiting) {
+        event.preventDefault();
+        return;
+      }
       event.dataTransfer.effectAllowed = "move";
       onDragStart();
     }}
     onDragEnd={onDragEnd}
     onDragOver={(event) => {
-      if (!isAdmin) return;
+      if (!isAdmin || isAdminUiExiting) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
     }}
@@ -308,7 +321,7 @@ const ContactCard = ({
       event.preventDefault();
       onDrop();
     }}
-    className={`rounded-2xl border bg-card p-5 shadow-soft transition-all ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "scale-[0.98] opacity-60" : ""}`}
+    className={`rounded-2xl border bg-card p-5 shadow-soft transition-all ${isAdmin && !isAdminUiExiting ? "cursor-grab active:cursor-grabbing" : ""} ${isDragging ? "scale-[0.98] opacity-60" : ""}`}
   >
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -318,7 +331,7 @@ const ContactCard = ({
         </div>
       </div>
       {isAdmin && (
-        <div className="admin-reveal flex shrink-0 gap-1">
+        <div className={`${isAdminUiExiting ? "admin-control-exit" : "admin-reveal"} flex shrink-0 gap-1`}>
           <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${contact.label}`}>
             <Pencil className="h-4 w-4" />
           </Button>
@@ -445,7 +458,7 @@ const ContactDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-h-[min(90svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(30rem,calc(100vw-1rem))] overflow-y-auto">
+      <DialogContent className="max-h-[min(90svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(30rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit contact" : "Add contact"}</DialogTitle>
         </DialogHeader>

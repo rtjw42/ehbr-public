@@ -14,7 +14,7 @@ import {
 
 const Events = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
-  const { isAdmin, ensureAdminSession } = useAdmin();
+  const { showAdminControls, isAdminUiExiting, ensureAdminSession } = useAdmin();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EventItem | null>(null);
@@ -65,8 +65,8 @@ const Events = () => {
               <h1 className="font-display text-[clamp(2.25rem,10vw,4rem)] text-primary leading-none tracking-tight">Upcoming Gigs</h1>
             </div>
           </div>
-          {isAdmin && (
-            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="admin-reveal shadow-soft">
+          {showAdminControls && (
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className={`${isAdminUiExiting ? "admin-control-exit" : "admin-reveal"} shadow-soft`}>
               <Plus className="h-4 w-4" /> New event
             </Button>
           )}
@@ -87,7 +87,7 @@ const Events = () => {
                 <div className="space-y-14 sm:space-y-20 lg:space-y-28">
                   {upcoming.map((ev, i) => (
                     <ScrollVinylRow
-                      key={ev.id} event={ev} index={i} isAdmin={isAdmin}
+                      key={ev.id} event={ev} index={i} isAdmin={showAdminControls} isAdminUiExiting={isAdminUiExiting}
                       onEdit={() => { setEditing(ev); setFormOpen(true); }}
                       onDelete={() => setPendingDelete(ev)}
                     />
@@ -101,7 +101,7 @@ const Events = () => {
                 <div className="space-y-14 sm:space-y-20 lg:space-y-28">
                   {past.map((ev, i) => (
                     <ScrollVinylRow
-                      key={ev.id} event={ev} index={i} isAdmin={isAdmin} faded
+                      key={ev.id} event={ev} index={i} isAdmin={showAdminControls} isAdminUiExiting={isAdminUiExiting} faded
                       onEdit={() => { setEditing(ev); setFormOpen(true); }}
                       onDelete={() => setPendingDelete(ev)}
                     />
@@ -137,12 +137,13 @@ interface RowProps {
   event: EventItem;
   index: number;
   isAdmin: boolean;
+  isAdminUiExiting: boolean;
   faded?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-const ScrollVinylRow = ({ event, index, isAdmin, faded, onEdit, onDelete }: RowProps) => {
+const ScrollVinylRow = ({ event, index, isAdmin, isAdminUiExiting, faded, onEdit, onDelete }: RowProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const fromLeft = index % 2 === 0;
@@ -220,7 +221,7 @@ const ScrollVinylRow = ({ event, index, isAdmin, faded, onEdit, onDelete }: RowP
           <p className="max-w-full text-base leading-relaxed text-foreground/70">{event.description}</p>
         )}
         {isAdmin && (
-          <div className={`admin-reveal flex flex-wrap gap-2 pt-3 ${fromLeft ? "" : "md:justify-end"}`}>
+          <div className={`${isAdminUiExiting ? "admin-control-exit" : "admin-reveal"} flex flex-wrap gap-2 pt-3 ${fromLeft ? "" : "md:justify-end"}`}>
             <Button size="sm" variant="outline" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" /> Edit
             </Button>

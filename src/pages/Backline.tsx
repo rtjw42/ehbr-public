@@ -56,7 +56,7 @@ const DEFAULT_CONTENT: Record<SectionKey, BacklineContent> = {
 
 const Backline = () => {
   const [content, setContent] = useState<Record<SectionKey, BacklineContent>>(DEFAULT_CONTENT);
-  const { isAdmin, ensureAdminSession } = useAdmin();
+  const { showAdminControls, isAdminUiExiting, ensureAdminSession } = useAdmin();
   const [editing, setEditing] = useState<BacklineContent | null>(null);
 
   const sections = useMemo(() => [content.gear, content.rates], [content]);
@@ -109,7 +109,12 @@ const Backline = () => {
             <div className="grid auto-cols-[minmax(18rem,85vw)] grid-flow-col gap-4 lg:auto-cols-fr lg:grid-flow-row lg:grid-cols-2">
               {sections.map((item, index) => (
                 <Reveal key={item.section_key} delay={index * 70}>
-                  <BacklineContentCard item={item} isAdmin={isAdmin} onEdit={() => setEditing(item)} />
+                  <BacklineContentCard
+                    item={item}
+                    isAdmin={showAdminControls}
+                    isAdminUiExiting={isAdminUiExiting}
+                    onEdit={() => setEditing(item)}
+                  />
                 </Reveal>
               ))}
             </div>
@@ -133,10 +138,12 @@ const Backline = () => {
 const BacklineContentCard = ({
   item,
   isAdmin,
+  isAdminUiExiting,
   onEdit,
 }: {
   item: BacklineContent;
   isAdmin: boolean;
+  isAdminUiExiting: boolean;
   onEdit: () => void;
 }) => {
   const [objectUrl, setObjectUrl] = useState("");
@@ -185,7 +192,13 @@ const BacklineContentCard = ({
           </h2>
         </div>
         {isAdmin && (
-          <Button size="icon" variant="ghost" onClick={onEdit} aria-label={`Edit ${item.title}`} className="admin-reveal">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onEdit}
+            aria-label={`Edit ${item.title}`}
+            className={isAdminUiExiting ? "admin-control-exit" : "admin-reveal"}
+          >
             <Pencil className="h-4 w-4" />
           </Button>
         )}
@@ -378,7 +391,7 @@ const BacklineContentDialog = ({
 
   return (
     <Dialog open={!!editing} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-h-[min(90svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(30rem,calc(100vw-1rem))] overflow-y-auto">
+      <DialogContent className="max-h-[min(90svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(30rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit {editing?.section_key ? SECTION_LABELS[editing.section_key as SectionKey] : "Backline content"}</DialogTitle>
         </DialogHeader>

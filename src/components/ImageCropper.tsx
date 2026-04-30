@@ -52,7 +52,7 @@ export const ImageCropper = ({ open, imageSrc, onClose, onCropped }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
-      <DialogContent className="w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(34rem,calc(100vw-1rem))] rounded-2xl">
+      <DialogContent className="w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(34rem,calc(100vw-1rem))] overflow-x-hidden rounded-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Adjust poster</DialogTitle>
         </DialogHeader>

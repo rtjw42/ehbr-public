@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -12,6 +12,7 @@ declare global {
           "error-callback": () => void;
           "timeout-callback"?: () => void;
           theme?: "light" | "dark" | "auto";
+          size?: "normal" | "compact" | "flexible";
         },
       ) => string;
       remove: (widgetId: string) => void;
@@ -57,6 +58,15 @@ type Props = {
 export const TurnstileWidget = ({ siteKey, onTokenChange, onExpired, onError, resetSignal = 0 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const [widgetSize, setWidgetSize] = useState<"compact" | "flexible">("flexible");
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 390px)");
+    const updateSize = () => setWidgetSize(media.matches ? "compact" : "flexible");
+    updateSize();
+    media.addEventListener("change", updateSize);
+    return () => media.removeEventListener("change", updateSize);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +77,7 @@ export const TurnstileWidget = ({ siteKey, onTokenChange, onExpired, onError, re
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           theme: "auto",
+          size: widgetSize,
           callback: onTokenChange,
           "expired-callback": () => {
             onTokenChange("");
@@ -94,7 +105,7 @@ export const TurnstileWidget = ({ siteKey, onTokenChange, onExpired, onError, re
         widgetIdRef.current = null;
       }
     };
-  }, [onError, onExpired, onTokenChange, siteKey]);
+  }, [onError, onExpired, onTokenChange, siteKey, widgetSize]);
 
   useEffect(() => {
     if (resetSignal > 0 && widgetIdRef.current && window.turnstile) {
@@ -103,5 +114,5 @@ export const TurnstileWidget = ({ siteKey, onTokenChange, onExpired, onError, re
     }
   }, [onTokenChange, resetSignal]);
 
-  return <div ref={containerRef} className="min-h-[65px]" />;
+  return <div ref={containerRef} className="turnstile-shell min-h-[65px] w-full" />;
 };

@@ -307,6 +307,11 @@
   animation: admin-dropdown-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.animate-admin-dropdown-out {
+  transform-origin: top right;
+  animation: admin-dropdown-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 @keyframes admin-dropdown-in {
   from {
     opacity: 0;
@@ -319,21 +324,120 @@
   }
 }
 
+@keyframes admin-dropdown-out {
+  0%,
+  68% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-0.55rem) scale(0.97);
+  }
+}
+
 .admin-reveal {
   transform-origin: center;
-  animation: admin-control-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: admin-control-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--admin-reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
 }
 
 @keyframes admin-control-in {
   from {
     opacity: 0;
-    transform: translateY(-0.25rem) scale(0.94);
+    filter: blur(0.125rem);
+    transform: translateY(0.45rem) scale(0.86);
+  }
+
+  65% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(-0.08rem) scale(1.035);
   }
 
   to {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0) scale(1);
   }
+}
+
+.admin-control-exit {
+  transform-origin: center;
+  animation: admin-control-out 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: var(--admin-exit-delay, 0ms);
+  will-change: opacity, transform, filter;
+  pointer-events: none;
+}
+
+.admin-panel-closing .admin-reveal,
+.admin-panel-closing .admin-control-exit {
+  animation: admin-control-out 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: var(--admin-close-delay, 0ms);
+  pointer-events: none;
+}
+
+.admin-panel-closing .admin-reveal:nth-of-type(1),
+.admin-panel-closing .admin-control-exit:nth-of-type(1) {
+  --admin-close-delay: 0ms;
+}
+
+.admin-panel-closing .admin-reveal:nth-of-type(2),
+.admin-panel-closing .admin-control-exit:nth-of-type(2) {
+  --admin-close-delay: 35ms;
+}
+
+.admin-panel-closing .admin-reveal:nth-of-type(3),
+.admin-panel-closing .admin-control-exit:nth-of-type(3) {
+  --admin-close-delay: 70ms;
+}
+
+@keyframes admin-control-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    filter: blur(0.125rem);
+    transform: translateY(-0.3rem) scale(0.92);
+  }
+}
+
+.turnstile-shell {
+  display: grid;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  place-items: center;
+}
+
+.turnstile-shell iframe {
+  max-width: 100% !important;
+}
+
+@media (max-width: 390px) {
+  .turnstile-shell {
+    justify-content: center;
+  }
+}
+
+.mobile-safe-form-grid > *,
+.mobile-safe-form-grid input,
+.mobile-safe-form-grid button {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-width: 0;
+  max-width: 100%;
 }
 
 html,

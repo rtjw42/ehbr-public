@@ -16,7 +16,7 @@ export const DayDetailDialog = ({ day, bookings, events = [], onClose }: Props) 
   const dayEvents = day ? eventsForDay(events, day) : [];
   return (
     <Dialog open={!!day} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[min(85svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(28rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[min(85svh,42rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(28rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-[clamp(1.5rem,6vw,2rem)]">
             {day ? format(day, "EEEE, MMMM d") : ""}

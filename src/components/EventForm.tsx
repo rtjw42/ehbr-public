@@ -123,7 +123,7 @@ export const EventForm = ({ open, onClose, editing, onSaved }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[min(90svh,48rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(32rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[min(90svh,48rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(32rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-[clamp(1.5rem,6vw,2rem)]">
             {editing ? "Edit event" : "New event"}
@@ -138,18 +138,18 @@ export const EventForm = ({ open, onClose, editing, onSaved }: Props) => {
             <Label htmlFor="ev-loc">Location</Label>
             <Input id="ev-loc" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="The Underground, 123 Main St" />
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
+          <div className="mobile-safe-form-grid grid gap-2 sm:grid-cols-3">
+            <div className="min-w-0">
               <Label htmlFor="ev-date">Date</Label>
-              <Input id="ev-date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+              <Input id="ev-date" type="date" className="w-full min-w-0 max-w-full" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
             </div>
-            <div>
+            <div className="min-w-0">
               <Label htmlFor="ev-start">Start</Label>
-              <Input id="ev-start" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} />
+              <Input id="ev-start" type="time" className="w-full min-w-0 max-w-full" value={eventTime} onChange={(e) => setEventTime(e.target.value)} />
             </div>
-            <div>
+            <div className="min-w-0">
               <Label htmlFor="ev-end">End (optional)</Label>
-              <Input id="ev-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <Input id="ev-end" type="time" className="w-full min-w-0 max-w-full" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div>

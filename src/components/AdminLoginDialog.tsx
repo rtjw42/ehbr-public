@@ -31,8 +31,10 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
   const { refreshAdmin } = useAdmin();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [inviteCodeError, setInviteCodeError] = useState("");
   const [busy, setBusy] = useState(false);
   const passwordError = mode === "register" ? getRegistrationPasswordError(password) : "";
 
@@ -69,6 +71,7 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
     try {
       const parsedEmail = emailSchema.safeParse(email);
       if (!parsedEmail.success) {
+        setEmailError(parsedEmail.error.errors[0].message);
         toast.error(parsedEmail.error.errors[0].message);
         return;
       }
@@ -86,7 +89,10 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
 
       if (mode === "register") {
         const cleanInvite = inviteCode.trim();
-        if (!cleanInvite) throw new Error("Invite code is required");
+        if (!cleanInvite) {
+          setInviteCodeError("Invite code is required.");
+          return;
+        }
         if (passwordError) throw new Error(passwordError);
 
         const { data, error } = await supabase.auth.signUp({
@@ -100,6 +106,12 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
           },
         });
         if (error) throw error;
+
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setEmailError("This email is already registered. Sign in instead.");
+          toast.error("This email is already registered. Sign in instead.");
+          return;
+        }
 
         if (!data.session) {
           toast.success("Check your email to confirm your account, then sign in");
@@ -127,7 +139,11 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
         await supabase.auth.signOut();
       }
       const message = getErrorMessage(error, "Login failed");
-      if (mode === "register" && /invite|database|trigger|hook/i.test(message)) {
+      if (mode === "register" && /already registered|already exists|email.*exists|user.*registered/i.test(message)) {
+        setEmailError("This email is already registered. Sign in instead.");
+        toast.error("This email is already registered. Sign in instead.");
+      } else if (mode === "register" && /invite|database|trigger|hook/i.test(message)) {
+        setInviteCodeError("Invalid or expired invite code.");
         toast.error("Invalid or expired invite code.");
       } else {
         toast.error(message === "Invalid login credentials" ? "Wrong email or password" : message);
@@ -191,8 +207,18 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
                 autoFocus
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError("");
+                }}
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? "admin-email-error" : undefined}
               />
+              {emailError && (
+                <p id="admin-email-error" className="text-xs text-destructive">
+                  {emailError}
+                </p>
+              )}
             </div>
             {mode !== "forgot" && (
               <div className="space-y-1.5">
@@ -224,8 +250,18 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
                   autoComplete="off"
                   required
                   value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
+                  onChange={(e) => {
+                    setInviteCode(e.target.value);
+                    setInviteCodeError("");
+                  }}
+                  aria-invalid={!!inviteCodeError}
+                  aria-describedby={inviteCodeError ? "admin-invite-error" : undefined}
                 />
+                {inviteCodeError && (
+                  <p id="admin-invite-error" className="text-xs text-destructive">
+                    {inviteCodeError}
+                  </p>
+                )}
               </div>
             )}
             <Button className="w-full" type="submit" disabled={busy}>
@@ -241,17 +277,17 @@ export const AdminLoginDialog = ({ open, onClose, variant = "center" }: Props) =
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
             {mode !== "sign-in" && (
-              <button type="button" className="hover:text-foreground" onClick={() => setMode("sign-in")}>
+              <button type="button" className="hover:text-foreground" onClick={() => { setMode("sign-in"); setEmailError(""); setInviteCodeError(""); }}>
                 Sign in
               </button>
             )}
             {mode !== "register" && (
-              <button type="button" className="hover:text-foreground" onClick={() => setMode("register")}>
+              <button type="button" className="hover:text-foreground" onClick={() => { setMode("register"); setEmailError(""); setInviteCodeError(""); }}>
                 Register
               </button>
             )}
             {mode !== "forgot" && (
-              <button type="button" className="hover:text-foreground" onClick={() => setMode("forgot")}>
+              <button type="button" className="hover:text-foreground" onClick={() => { setMode("forgot"); setEmailError(""); setInviteCodeError(""); }}>
                 Forgot password?
               </button>
             )}

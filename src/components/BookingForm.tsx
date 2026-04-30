@@ -314,7 +314,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[min(90svh,48rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(32rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl animate-pop-in">
+      <DialogContent className="max-h-[min(90svh,48rem)] w-[min(calc(100vw-1rem),calc(100%-2rem))] max-w-[min(32rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto rounded-[clamp(1.25rem,5vw,2rem)] sm:rounded-[clamp(1.25rem,5vw,2rem)] animate-pop-in">
         <DialogHeader>
           <DialogTitle className="font-display text-[clamp(1.5rem,6vw,2rem)]">{isEdit ? "Edit booking" : adminMode ? "Add Booking" : "Request a booking"}</DialogTitle>
           <DialogDescription>
@@ -327,11 +327,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="mobile-safe-form-grid grid gap-3 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
+                className="w-full min-w-0 max-w-full"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -343,10 +344,11 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
               />
               {errors.name && <p id="booking-name-error" className="text-xs text-destructive">{errors.name}</p>}
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="contact">Telegram handle</Label>
               <Input
                 id="contact"
+                className="w-full min-w-0 max-w-full"
                 placeholder="@yourhandle"
                 value={contact}
                 onChange={(e) => {
@@ -361,12 +363,13 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="mobile-safe-form-grid grid gap-3 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="date">Date</Label>
               <Input
                 id="date"
                 type="date"
+                className="w-full min-w-0 max-w-full"
                 value={date}
                 onChange={(e) => {
                   setDate(e.target.value);
@@ -377,11 +380,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
               />
               {errors.date && <p id="booking-date-error" className="text-xs text-destructive">{errors.date}</p>}
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="start">Start time</Label>
               <Input
                 id="start"
                 type="time"
+                className="w-full min-w-0 max-w-full"
                 value={startTime}
                 onChange={(e) => {
                   setStartTime(e.target.value);
@@ -418,11 +422,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                 {errors.endTime && <p className="text-xs text-destructive">{errors.endTime}</p>}
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label htmlFor="end">End time</Label>
                 <Input
                   id="end"
                   type="time"
+                  className="w-full min-w-0 max-w-full"
                   value={endTime}
                   onChange={(e) => {
                     setEndTime(e.target.value);
@@ -468,8 +473,8 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
           </div>
 
           {!isEdit && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+            <div className="mobile-safe-form-grid grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Recurrence</Label>
                 <Select
                   value={recurrence}
@@ -487,11 +492,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label htmlFor="rend">Repeat until</Label>
                 <Input
                   id="rend"
                   type="date"
+                  className="w-full min-w-0 max-w-full"
                   value={recurrenceEnd}
                   onChange={(e) => {
                     setRecurrenceEnd(e.target.value);
@@ -507,7 +513,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
           )}
 
           {!isEdit && !adminMode && (
-            <div className="rounded-xl border bg-muted/30 p-3">
+            <div className="min-w-0 overflow-hidden rounded-xl border bg-muted/30 p-3">
               {turnstileSiteKey ? (
                 <TurnstileWidget
                   siteKey={turnstileSiteKey}
