@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Batch routine minor/patch bumps into one PR to cut noise; security
+      # updates and majors still come through as their own PRs.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Project targets React 18. Block major bumps of React and its type
+      # packages (e.g. @types/react 19) until a deliberate React 19 migration,
+      # otherwise the peer-dependency graph breaks the install.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - "dependencies"
+
+  # GitHub Actions workflows (no-op until the CI workflow lands in R6/CI stage)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"

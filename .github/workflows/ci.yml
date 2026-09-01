@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    # dev is the working branch here; main is the public mirror's branch, so the
+    # workflow runs in both repositories.
+    branches: [dev, main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm run build
+      # Fail only on high/critical dependency advisories (moderate is informational).
+      - run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,164 @@
+/* Band Room Booking — design tokens. All colors HSL. */
+
+@layer base {
+  :root {
+    /* Tell the browser which scheme it's painting: native form controls,
+       scrollbars, and the overscroll canvas follow this instead of defaulting
+       to light-on-dark mismatches. The .dark block flips it. */
+    color-scheme: light;
+
+    /* Layout */
+    --site-nav-height: 3.5rem;
+    --page-max-width: 80rem;
+    --page-padding-x: 1rem;
+
+    /* Page background (used directly, not via hsl()) */
+    --color-bg-page: #e6ddc9;
+
+    /* Light bakes the whole paper into the texture image and shows it as-is, so the
+       canvas blend is `normal`; dark keeps its grayscale grain on soft-light. Per-theme
+       so each gets the right compositing (consumed in globals.css). */
+    --canvas-blend: normal;
+
+    /* Footer band — dark in both themes (#101010). */
+    --color-footer: 0 0% 6.3%;
+    --color-footer-foreground: 0 0% 100%;
+
+    /* Textured backdrop — crumpled paper for light mode: SVG fractal-noise lit by
+       feDiffuseLighting (the fold highlights/shadows) multiplied into the cream, baked
+       into one opaque image. A large 1200px STITCHED tile so it reads as one continuous
+       sheet, not visibly repeated. Tune: baseFrequency = fold scale; surfaceScale /
+       feDistantLight elevation = crumple depth; feFlood = paper colour. */
+    --canvas-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.013' numOctaves='5' seed='8' stitchTiles='stitch' result='n'/%3E%3CfeDiffuseLighting in='n' surfaceScale='1.7' diffuseConstant='1.05' lighting-color='%23ffffff' result='l'%3E%3CfeDistantLight azimuth='235' elevation='63'/%3E%3C/feDiffuseLighting%3E%3CfeFlood flood-color='%23e6ddc9' result='b'/%3E%3CfeBlend in='b' in2='l' mode='multiply'/%3E%3C/filter%3E%3Crect width='1200' height='1200' filter='url(%23p)'/%3E%3C/svg%3E");
+    --canvas-texture-size: 1200px 1200px;
+
+    /* Base semantic colors — light mode */
+    --background: 42 38% 96%;
+    --foreground: 25 20% 18%;
+
+    --card: 38 44% 94%;
+    --card-foreground: 25 20% 18%;
+
+    --popover: 39 46% 96%;
+    --popover-foreground: 25 20% 18%;
+
+    --primary: 25 35% 25%;
+    --primary-foreground: 42 38% 96%;
+
+    --secondary: 38 30% 90%;
+    --secondary-foreground: 25 25% 22%;
+
+    --muted: 38 25% 92%;
+    /* Darker + warmer than before so small/secondary text stays readable over the
+       cream + photo-wash background (was 25 10% 42% — too low contrast). */
+    --muted-foreground: 25 16% 30%;
+
+    --accent: 35 50% 88%;
+    --accent-foreground: 25 30% 22%;
+
+    --destructive: 5 70% 55%;
+    --destructive-foreground: 42 38% 98%;
+
+    /* Success = "slot is clear" (admin pending pills). Warm olive-leaning green
+       so it sits in the cream/cocoa family, not a cold UI green. */
+    --success: 130 32% 34%;
+    --success-foreground: 42 38% 98%;
+
+    --border: 35 20% 86%;
+    --input: 35 20% 86%;
+    --ring: 25 35% 35%;
+
+    /* Radius scale */
+    --radius-sm: 0.5rem;
+    --radius-md: 1rem;
+    --radius-lg: 1.35rem;
+    --radius-full: 9999px;
+    --radius: var(--radius-md);
+
+    /* Shadow scale */
+    --shadow-soft: 0 2px 12px -4px hsl(25 30% 25% / 0.08);
+    --shadow-sm: 0 4px 16px -8px hsl(25 30% 25% / 0.10);
+    --shadow-elev: 0 6px 24px -12px hsl(25 30% 25% / 0.14);
+    --shadow-md: 0 8px 28px -18px hsl(25 30% 25% / 0.18);
+    --shadow-lg: 0 18px 52px -36px hsl(25 30% 20% / 0.24);
+
+    /* Motion design system — single source of truth (mirrored in lib/motion.ts).
+       Feel: smooth, gently slower — not snappy. */
+    --ease-standard: cubic-bezier(0.22, 1, 0.36, 1); /* the one enter/move curve */
+    --ease-exit: cubic-bezier(0.3, 0, 1, 0.7);
+    --duration-tap: 140ms;   /* press / active feedback */
+    --duration-fast: 200ms;  /* hover, color, small fades */
+    --duration-base: 260ms;  /* crossfades, most transitions */
+    --duration-slow: 340ms;  /* panels, dialogs, page, icons */
+    --transition-smooth: var(--ease-standard); /* alias kept for existing usages */
+
+    /* Interactive tokens — light mode
+       These replace the repeated hover:bg-[#1a1a1a] hover:text-white pattern */
+    --interactive-bg: hsl(25 20% 12%);
+    --interactive-bg-hover: hsl(25 18% 8%);
+    --interactive-text: hsl(42 38% 96%);
+    --interactive-border: hsl(25 20% 12%);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Warm dark — same warm, photography-driven identity, just lit differently */
+    --color-bg-page: #0e0b08;
+
+    /* Dark backdrop keeps a simple fine grain (a large soft mottle would read as smudges
+       on the near-black). Same soft-light blend in globals.css. */
+    --canvas-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6 0.7' numOctaves='4' stitchTiles='stitch' seed='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23p)'/%3E%3C/svg%3E");
+    --canvas-texture-size: 300px 300px;
+    /* Grayscale grain stays a soft-light overlay over the near-black (without this it
+       would inherit the light tier's `normal` and paint as raw gray noise). */
+    --canvas-blend: soft-light;
+
+    --background: 25 15% 10%;
+    --foreground: 38 32% 91%;
+
+    /* Lifted above the page (--background 10%) so cards read as elevated
+       surfaces, not just outlined patches on the same near-black. */
+    --card: 25 13% 13%;
+    --card-foreground: 38 32% 91%;
+
+    --popover: 25 13% 13%;
+    --popover-foreground: 38 32% 91%;
+
+    --primary: 38 32% 91%;
+    --primary-foreground: 25 18% 6%;
+
+    --secondary: 25 12% 13%;
+    --secondary-foreground: 38 28% 86%;
+
+    --muted: 25 10% 14%;
+    /* Lighter than before (was 36 14% 62%) so secondary text reads cleanly on the
+       warm-dark surfaces. */
+    --muted-foreground: 38 18% 77%;
+
+    /* Warm cocoa accent — replaces the cold blue */
+    --accent: 28 40% 28%;
+    --accent-foreground: 38 32% 92%;
+
+    --destructive: 4 62% 52%;
+    --destructive-foreground: 38 32% 94%;
+
+    /* Success — lifted for contrast on the warm-dark surfaces. */
+    --success: 130 28% 62%;
+    --success-foreground: 25 18% 6%;
+
+    --border: 0 0% 100% / 0.45;
+    --input: 0 0% 100% / 0.48;
+    --ring: 38 30% 55%;
+
+    /* Interactive tokens — dark mode */
+    --interactive-bg: hsl(38 32% 91%);
+    --interactive-bg-hover: hsl(38 36% 96%);
+    --interactive-text: hsl(25 18% 6%);
+    --interactive-border: hsl(38 32% 91%);
+
+    /* Shadow scale — dark mode (stronger, dark bg absorbs light shadows) */
+    --shadow-soft: 0 2px 12px -4px hsl(0 0% 0% / 0.28);
+    --shadow-elev: 0 6px 24px -12px hsl(0 0% 0% / 0.45);
+  }
+}

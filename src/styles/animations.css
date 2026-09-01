@@ -1,0 +1,47 @@
+@layer utilities {
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elev { box-shadow: var(--shadow-elev); }
+  .ease-smooth-transition { transition-timing-function: var(--transition-smooth); }
+  .motion-duration-base {
+    animation-duration: var(--duration-slow);
+    transition-duration: var(--duration-slow);
+  }
+  .motion-duration-fast {
+    animation-duration: var(--duration-base);
+    transition-duration: var(--duration-base);
+  }
+  .motion-state-ease[data-state="open"] {
+    animation-timing-function: var(--ease-standard);
+    transition-timing-function: var(--ease-standard);
+  }
+  .motion-state-ease[data-state="closed"] {
+    animation-timing-function: var(--ease-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+
+  .skeleton-block::after {
+    animation: skeleton-shimmer 1.28s ease-in-out infinite;
+  }
+
+  /*
+   * Graceful image load — opacity-only fade so late-arriving posters/previews
+   * settle in instead of popping. This is load-quality, not decorative motion.
+   * Applied by <FadeInImg> only once an image decodes asynchronously; cached
+   * images mount without the class and land at rest instantly. Only opacity
+   * animates → stays on the GPU.
+   */
+  .img-fade {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  @keyframes skeleton-shimmer {
+    to { transform: translateX(100%); }
+  }
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+}

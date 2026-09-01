@@ -1,0 +1,10 @@
+project_id = ""
+
+[functions.submit-booking]
+verify_jwt = false
+
+[functions.register-admin]
+verify_jwt = false
+
+[functions.request-password-reset]
+verify_jwt = false

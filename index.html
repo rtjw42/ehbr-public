@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!-- No theme-color meta on purpose: it forces iOS Safari to paint a solid
+         tinted toolbar, which overrides the native translucent glass bars that
+         blur the page content. We let Safari keep its native glass (color-scheme
+         in tokens.css tells it which way to tint per theme). -->
+    <script src="/theme-init.js"></script>
+    <title>Eusoff Bandits</title>
+    <meta name="description" content="Book and manage your band sessions" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Add to Home Screen (installable, standalone launch). Manifest-only, no
+         service worker — the app's runtime is unchanged, no offline caching.
+         No theme-color meta here on purpose (see note above); the manifest's
+         theme_color governs the installed app only, not Safari's glass bars. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Eusoff Bandits" />
+    <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
+    <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin />
+    <meta property="og:title" content="Eusoff Bandits" />
+    <meta property="og:description" content="Book and manage your band sessions" />
+    <meta property="og:type" content="website" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,822 @@
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    max-width: 100%;
+    scroll-behavior: smooth;
+    scrollbar-color: hsl(var(--primary) / 0.24) var(--color-bg-page);
+    /* The page's textured backdrop lives HERE, on the root canvas — ONE surface, not a
+       separate fixed layer. So the paper texture paints uniformly everywhere: the content
+       backdrop, the overscroll/rubber-band, and behind Safari's translucent bars — with no
+       seam to misalign or to track the bottom bar (the old fixed .photo-bg layer pinned to
+       100lvh was what created that). A large stitched SVG tile; it never re-fits on
+       pinch-zoom (a tile doesn't rescale). Overscroll stays fully native on BOTH axes: an
+       `overscroll-behavior-x: none` here would pin the page mid-pinch-zoom. Light bakes the
+       crumpled paper into the image (blend `normal`); dark overlays grayscale grain on
+       soft-light — see --canvas-blend per theme in tokens.css. */
+    background-color: var(--color-bg-page);
+    background-image: var(--canvas-texture);
+    background-size: var(--canvas-texture-size);
+    background-blend-mode: var(--canvas-blend, soft-light);
+  }
+
+  /* Body stays transparent so the root canvas (the textured backdrop on html) shows
+     through behind the content. No overscroll slabs needed any more — the canvas texture
+     paints every edge (top, bottom, behind the bars) by itself, as one continuous surface. */
+  body {
+    @apply text-foreground;
+    max-width: 100%;
+    min-height: 100dvh;
+    font-feature-settings: "ss01", "cv01";
+  }
+
+  #root {
+    max-width: 100%;
+    min-height: 100dvh;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="combobox"]:focus-visible,
+  select:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 0 0 4px hsl(var(--primary) / 0.5);
+  }
+}
+
+@layer components {
+  /* Typography scale — single source so headings/labels stay consistent and
+     can't drift per-component. Reserved exception: Fraunces (font-display) is
+     used ONLY on the bookings day cards (DayBox); everything else is Outfit
+     (font-sans). All heading weights are semibold. */
+  .type-hero {
+    @apply font-sans font-black uppercase tracking-normal;
+    font-size: clamp(4.1rem, 16vw, 9.25rem);
+    line-height: 0.8;
+  }
+  .type-page-title {
+    @apply font-sans font-semibold tracking-normal;
+    font-size: clamp(2.5rem, 12vw, 4.5rem);
+    line-height: 0.9;
+  }
+  .type-card-title {
+    @apply font-sans font-semibold normal-case tracking-normal;
+    font-size: clamp(1.75rem, 6.5vw, 2.75rem);
+    line-height: 1;
+  }
+  .type-card-title-lg {
+    @apply font-sans font-semibold tracking-normal;
+    font-size: clamp(2.75rem, 12vw, 4rem);
+    line-height: 0.9;
+  }
+  .type-section {
+    @apply font-sans font-semibold tracking-normal;
+    font-size: clamp(1.4rem, 5vw, 2.2rem);
+    line-height: 1.05;
+  }
+  .type-item-title {
+    @apply font-sans font-semibold;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    line-height: 1.15;
+  }
+  .type-dialog-title {
+    @apply font-sans font-semibold;
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    line-height: 1.15;
+  }
+  .type-auth-title {
+    @apply font-sans font-semibold;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    line-height: 1;
+  }
+  .type-eyebrow {
+    @apply font-sans font-semibold uppercase tracking-widest;
+    font-size: clamp(0.625rem, 2vw, 0.7rem);
+  }
+  /* Size-only micro-text utilities. No weight/transform/family opinions, so they
+     drop in for the repeated inline text-[clamp(...)] on chips and pill badges. */
+  .type-chip {
+    font-size: clamp(0.68rem, 2vw, 0.75rem);
+  }
+  .type-badge {
+    font-size: clamp(0.625rem, 2vw, 0.7rem);
+  }
+}
+
+@layer utilities {
+  /* Frosted-glass panel for the landing info boxes. Uses its own class (not Tailwind's
+     .backdrop-blur-*) so the mobile/touch perf rule that strips backdrop-filter doesn't
+     catch it — these boxes are small and static relative to their card photo, so the
+     blur is cheap here and we keep the frost consistent on every screen size. */
+  .frost-box {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  /* Theme-aware frosted content panel. Unlike .frost-box (always-dark, lives over a
+     photo with white text), this rides on the page's photo background and is driven
+     entirely by tokens: --card swaps near-white in light mode / near-black in dark,
+     so the panel is "whitish glass" in light and "dark glass" in dark with foreground
+     text legible in both. One class so every panel restyles from here. Own backdrop
+     class (like .frost-box) so the mobile strip rule below leaves it alone. */
+  .frost-panel {
+    /* Light mode: a SOLID surface like the nav — opaque card colour, no blur, no
+       translucency. Text stays the default dark foreground. The shadow on the
+       element (shadow-sm) lifts it off the dimmed photo backdrop. */
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Dark mode: the frosted glass — translucent dark tint + blur, with the text
+       tokens flipped light so the token-driven children stay legible. */
+  .dark .frost-panel {
+    background-color: hsl(var(--card) / 0.62);
+    border-color: hsl(var(--foreground) / 0.2);
+    --foreground: 38 32% 91%;
+    --muted-foreground: 38 18% 72%;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Inverting CTA. Light mode: a white pill with a dark outline + dark text that
+     flips to a dark fill (white text) on hover. Dark mode is the exact opposite
+     (dark pill, light outline, light text → white fill on hover) — and it falls out
+     for free because everything is driven by --card / --foreground, which swap per
+     theme. The doubled class out-specifies the Button variant without !important. */
+  .btn-on-glass.btn-on-glass {
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--foreground) / 0.85);
+  }
+  .btn-on-glass.btn-on-glass:hover {
+    background-color: hsl(var(--foreground));
+    color: hsl(var(--card));
+    border-color: hsl(var(--foreground));
+  }
+
+  /* Solid CTA for the big "+" actions (New event, Add media). Reads as a black pill
+     in light mode (foreground fill + card-coloured glyph); in dark mode the same
+     tokens flip so it's a high-contrast cream pill — never a black-on-black blob in
+     the dark frosted header. Hover stays in the SAME colour family (a softer fill),
+     so it darkens/lightens rather than inverting. Doubled class out-specifies the
+     Button variant without !important. */
+  .btn-cta.btn-cta {
+    background-color: hsl(var(--foreground));
+    color: hsl(var(--card));
+    border: 1px solid hsl(var(--foreground));
+  }
+  .btn-cta.btn-cta:hover {
+    background-color: hsl(var(--foreground) / 0.85);
+    border-color: hsl(var(--foreground) / 0.85);
+    color: hsl(var(--card));
+  }
+
+  /* Overlay control sitting on an arbitrary photo (poster corners, hero edit, badges).
+     Dual-contrast by construction so it reads on ANY background: a dark scrim + white
+     glyph carry it on light/mid images, while a light hairline ring + drop shadow
+     separate it on dark images. */
+  .btn-overlay {
+    background-color: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .btn-overlay:hover {
+    background-color: rgba(0, 0, 0, 0.62);
+  }
+
+  /* Shared interactive token — replaces hover:bg-[#1a1a1a] hover:text-white dark:hover:bg-[#f4efe7] pattern */
+  .btn-interactive {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+    border-color: transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      transform var(--duration-tap) var(--ease-standard);
+  }
+
+  /* Hover-capable pointers only. On touch, `:hover` latches on tap and stays until
+     you tap elsewhere — and this rule paints near-black with inverted text, so a
+     tapped nav/dialog/FormShell icon button sat there looking black. Tailwind
+     utilities get this automatically via `hoverOnlyWhenSupported`; hand-written CSS
+     has to say it. The state rules below are deliberately NOT guarded — they are
+     real state, not hover. */
+  @media (hover: hover) {
+    .btn-interactive:hover {
+      background-color: var(--interactive-bg);
+      color: var(--interactive-text);
+      border-color: var(--interactive-border);
+    }
+  }
+
+  .btn-interactive[data-state="open"],
+  .btn-interactive.is-active {
+    background-color: var(--interactive-bg);
+    color: var(--interactive-text);
+    border-color: var(--interactive-border);
+  }
+
+  .btn-interactive:active {
+    transform: scale(0.97);
+  }
+
+  .consent-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: grid;
+    min-height: 100dvh;
+    place-items: center;
+    overflow: hidden;
+    padding:
+      max(0.75rem, env(safe-area-inset-top))
+      max(0.75rem, env(safe-area-inset-right))
+      max(0.75rem, env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
+  }
+
+  .consent-panel {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: min(52rem, calc(100vw - 1.5rem));
+    max-height: min(100%, 45rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: clamp(1rem, 3vw, 1.35rem);
+    border-radius: clamp(var(--radius-md), 4vw, var(--radius-lg));
+    background: rgba(246, 242, 233, 0.95);
+    padding: clamp(1rem, 4vw, 1.5rem);
+    box-shadow: 0 24px 54px -46px rgba(26, 26, 26, 0.46);
+  }
+
+  .dark .consent-panel {
+    background: rgba(28, 22, 16, 0.96);
+    box-shadow: 0 24px 54px -46px rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255, 235, 200, 0.07);
+    color: hsl(38 32% 91%);
+  }
+
+  .dark .consent-panel h1,
+  .dark .consent-panel h2,
+  .dark .consent-panel span,
+  .dark .consent-panel p {
+    color: inherit;
+  }
+
+  .consent-panel[role="dialog"] {
+    width: min(52rem, calc(100vw - 1.5rem)) !important;
+    max-width: min(52rem, calc(100vw - 1.5rem)) !important;
+    max-height: min(100%, 45rem) !important;
+    overflow: hidden;
+  }
+
+  /* The first-run setup step is a focused, compact card — not a full-page form.
+     The legal step keeps the wide reading width above. */
+  .consent-panel.is-compact,
+  .consent-panel.is-compact[role="dialog"] {
+    width: min(30rem, calc(100vw - 1.5rem)) !important;
+    max-width: min(30rem, calc(100vw - 1.5rem)) !important;
+  }
+
+  /* Step 0 splash — chromeless, on the bare textured canvas (no card). */
+  .consent-splash {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+
+  .consent-splash-logo {
+    width: clamp(6rem, 26vw, 7.5rem);
+    height: clamp(6rem, 26vw, 7.5rem);
+    border-radius: 28%;
+    object-fit: cover;
+    border: 1px solid rgba(26, 26, 26, 0.12);
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .dark .consent-splash-logo {
+    border-color: rgba(255, 235, 200, 0.12);
+  }
+
+  .consent-body {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+
+  .consent-copy {
+    position: relative;
+    max-height: min(58dvh, 28rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 1rem;
+    /* Top-left inset so the first lines clear the panel's rounded corner. */
+    padding: 0.6rem 0.6rem 1.5rem 0.5rem;
+    color: rgba(26, 26, 26, 0.72);
+    scrollbar-color: rgba(26, 26, 26, 0.28) transparent;
+    scrollbar-width: thin;
+  }
+
+  .consent-copy::-webkit-scrollbar {
+    width: 0.35rem;
+  }
+
+  .consent-copy::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .consent-copy::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(26, 26, 26, 0.26);
+  }
+
+  .dialog-scroll-shell {
+    scrollbar-color: hsl(var(--primary) / 0.28) transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .dialog-scroll-shell::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Promote the morphing panel to its own compositor layer so animating its
+     height repaints only the panel, not the backdrop/page behind it. `transform`
+     is the safe hint (the panel is already transform-animated by framer), so it
+     never fights the open/close motion. Most impactful on mobile, where the panel
+     is near-full-width. */
+  .nav-morph-panel {
+    will-change: transform;
+  }
+
+  .nav-panel-scroll {
+    scrollbar-color: hsl(var(--primary) / 0.26) transparent;
+    scrollbar-width: thin;
+  }
+
+  .nav-panel-scroll::-webkit-scrollbar {
+    width: 0.3rem;
+  }
+
+  .nav-panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .nav-panel-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: hsl(var(--primary) / 0.24);
+  }
+
+  .consent-copy strong {
+    color: #1a1a1a;
+    font-weight: 800;
+  }
+
+  .dark .consent-copy strong {
+    color: hsl(38 32% 91%);
+  }
+
+  .legal-copy a {
+    color: #1a1a1a;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .dark .legal-copy a {
+    color: hsl(38 32% 91%);
+  }
+
+  .consent-copy .legal-copy {
+    margin-top: 1.25rem;
+  }
+
+  .consent-copy p + p {
+    margin-top: 0.85rem;
+  }
+
+  .consent-actions {
+    display: grid;
+    gap: 0.75rem;
+    border-top: 1px solid rgba(26, 26, 26, 0.08);
+    padding-top: 0.8rem;
+  }
+
+  .dark .consent-actions {
+    border-top-color: rgba(255, 235, 200, 0.08);
+  }
+
+  .consent-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 3rem;
+  }
+
+  .consent-back-button {
+    display: inline-flex;
+    min-height: 2.25rem;
+    width: max-content;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(26, 26, 26, 0.58);
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .consent-back-button:hover {
+    background: rgba(246, 242, 233, 0.9);
+    color: #1a1a1a;
+  }
+
+  .dark .consent-back-button {
+    color: hsl(38 32% 55%);
+  }
+
+  .dark .consent-back-button:hover {
+    background: rgba(255, 235, 200, 0.08);
+    color: hsl(38 32% 91%);
+  }
+
+  .consent-arrow-button {
+    display: grid;
+    min-height: 2.75rem;
+    width: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--interactive-border);
+    background: var(--interactive-bg);
+    color: var(--interactive-text);
+    opacity: 0.35;
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard);
+  }
+
+  .consent-arrow-button.is-ready,
+  .consent-agree-button.is-ready {
+    opacity: 1;
+  }
+
+  .consent-agree-button {
+    min-height: 2.75rem;
+    justify-self: end;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--interactive-border);
+    background: var(--interactive-bg);
+    color: var(--interactive-text);
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+    opacity: 0.35;
+    transition:
+      opacity var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard);
+  }
+
+  .consent-agree-button:disabled {
+    cursor: not-allowed;
+  }
+
+  .skeleton-block {
+    position: relative;
+    overflow: hidden;
+    border-radius: inherit;
+    background: hsl(var(--muted) / 0.72);
+  }
+
+  .skeleton-block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--card) / 0.78),
+      transparent
+    );
+  }
+
+  .turnstile-shell {
+    background: transparent;
+    border: 0;
+    display: grid;
+    max-width: 100%;
+    min-width: 0;
+    outline: 0;
+    overflow: hidden;
+    place-items: center;
+  }
+
+  .turnstile-shell iframe {
+    background: transparent !important;
+    border: 0 !important;
+    max-width: 100% !important;
+    outline: 0 !important;
+  }
+
+  .turnstile-verification-slot {
+    min-height: 0;
+  }
+
+  .mobile-safe-form-grid > *,
+  .mobile-safe-form-grid input,
+  .mobile-safe-form-grid button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .overflow-guard {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  /*
+   * When a dialog/modal locks body scroll, react-remove-scroll-bar injects:
+   *   body[data-scroll-locked] { overflow: hidden !important; }
+   * which removes the scrollbar and causes a layout-width jump.
+   *
+   * This rule wins the cascade via higher specificity (0-1-2 vs 0-1-1) and
+   * keeps the scrollbar channel visible. Actual scroll prevention is handled
+   * by react-remove-scroll's event blocking — not overflow:hidden.
+   */
+  html body[data-scroll-locked] {
+    overflow-y: scroll !important;   /* keep scrollbar channel — prevents layout-width jump */
+    margin-right: 0 !important;      /* cancel the injected margin-right compensation (unneeded since scrollbar stays) */
+  }
+
+  /* Route enter (see PageTransition.tsx) — the ONE page-entrance system. The whole
+     page moves in together as a single promoted layer (transform+opacity, on the
+     compositor) directly over the textured backdrop — no opaque overlay, so no
+     flash. Tier-differentiated: LITE (mobile) slides in horizontally; FULL (desktop)
+     fades + gently rises. First load is instant on every tier (PageTransition only
+     adds .page-enter after the first navigation). The bookings grid on desktop is the single exception — PageTransition
+     omits .page-enter there so the DayBox cascade owns that entrance (never two
+     systems on the same content). */
+  html[data-motion="lite"] .page-enter {
+    animation: page-enter-x var(--duration-base) var(--ease-standard) both;
+  }
+  html[data-motion="full"] .page-enter {
+    animation: page-enter-fade var(--duration-slow) var(--ease-standard) both;
+  }
+  @keyframes page-enter-x {
+    from { transform: translateX(1.5rem); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes page-enter-fade {
+    from { transform: translateY(0.5rem); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Dialog animation — scale-in on desktop, slide-up on mobile.
+     Uses CSS Transforms Level 2 (scale/translate properties) so the
+     keyframe doesn't conflict with the element's translate(-50%,-50%) class. */
+  [data-dialog-content][data-state="open"] {
+    animation: dialog-enter var(--duration-slow) var(--ease-standard) both;
+  }
+  [data-dialog-content][data-state="closed"] {
+    animation: dialog-exit var(--duration-base) var(--ease-exit) both;
+  }
+
+  @keyframes dialog-enter {
+    from { opacity: 0; scale: 0.95; }
+    to   { opacity: 1; scale: 1; }
+  }
+  @keyframes dialog-exit {
+    from { opacity: 1; scale: 1; }
+    to   { opacity: 0; scale: 0.97; }
+  }
+
+  /* Mobile dialog reveal — slide-up instead of the desktop scale. Keyed off the
+     motion authority (data-motion), not a width query, so it tracks pointer type
+     with the rest of the motion system. :not(full) = lite (the binary split's
+     coarse-pointer side), matching the prior width-based mobile behavior.
+     Higher specificity (html + tier) beats the base scale rule above. */
+  html:not([data-motion="full"]) [data-dialog-content][data-state="open"] {
+    animation: dialog-mobile-enter var(--duration-slow) var(--ease-standard) both;
+  }
+  html:not([data-motion="full"]) [data-dialog-content][data-state="closed"] {
+    animation: dialog-mobile-exit var(--duration-base) var(--ease-exit) both;
+  }
+
+  @keyframes dialog-mobile-enter {
+    from { opacity: 0; translate: 0 10px; }
+    to   { opacity: 1; translate: 0 0; }
+  }
+  @keyframes dialog-mobile-exit {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: 0 8px; }
+  }
+
+  @media (max-width: 480px) {
+    .consent-action-row {
+      grid-template-columns: auto 1fr;
+    }
+
+    .consent-arrow-button,
+    .consent-agree-button {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .turnstile-shell {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 767px), (hover: none) and (pointer: coarse) {
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"] {
+      min-height: 44px;
+      height: 44px;
+      padding-top: 0;
+      padding-bottom: 0;
+      line-height: 44px;
+    }
+
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="time"]::-webkit-date-and-time-value,
+    input[type="datetime-local"]::-webkit-date-and-time-value {
+      display: flex;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 44px;
+      align-items: center;
+      text-align: left;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    [role="dialog"],
+    .dialog-scroll-shell,
+    .overflow-y-auto {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body,
+    #root,
+    .min-h-screen {
+      min-height: 100lvh;
+    }
+
+    .consent-gate {
+      min-height: 100svh;
+    }
+  }
+
+  /* Mobile render budget — keyed off the motion authority, not a width query, so
+     blur/skeleton cost tracks pointer type with the rest of the motion system.
+     :not(full) = lite (the coarse-pointer performance tier); it strips blur and
+     drops the shimmer, matching the prior (max-width:767px),(coarse) behavior on
+     real devices. */
+  html:not([data-motion="full"]) .blur-3xl,
+  html:not([data-motion="full"]) .blur-2xl,
+  html:not([data-motion="full"]) .blur-xl {
+    filter: none !important;
+  }
+
+  html:not([data-motion="full"]) .backdrop-blur,
+  html:not([data-motion="full"]) .backdrop-blur-sm,
+  html:not([data-motion="full"]) .backdrop-blur-md,
+  html:not([data-motion="full"]) .backdrop-blur-lg,
+  html:not([data-motion="full"]) .backdrop-blur-xl {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* frost-panel declares its OWN backdrop-filter (not a Tailwind utility), so the
+     strip above doesn't catch it — which left every dark-mode day card compositing
+     a live 12px blur on phones, recomputed each scroll frame (the main Low-Power
+     scroll cost). On the performance tier (lite) drop that blur and
+     compensate with a near-opaque card fill: same dark-glass read, no per-frame
+     backdrop recompute. Desktop (full) keeps the blur, where it's cheap. The
+     --foreground/--muted-foreground overrides from `.dark .frost-panel` still
+     cascade, so text contrast is unchanged. */
+  html.dark:not([data-motion="full"]) .frost-panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: hsl(var(--card) / 0.92);
+  }
+
+  /* While something inside a dialog is mid height-glide (<Resize> flags itself
+     with data-resizing via the browser's own transition events), drop the
+     surface's large blurred shadow so it isn't re-rasterized every frame as the
+     surface resizes (restored with the Phase M2.5 resize revival — same paint
+     cost M1/D2 originally removed). Restored the instant the glide settles; the
+     dialog still reads as floating over its dimmed backdrop. Degrades safely:
+     if :has() is unsupported the shadow simply stays. */
+  [data-dialog-content]:has([data-resizing]) {
+    box-shadow: none !important;
+  }
+
+  html:not([data-motion="full"]) .skeleton-block {
+    animation: skeleton-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  html:not([data-motion="full"]) .skeleton-block::after {
+    display: none;
+  }
+
+  @media (max-width: 374px) {
+    .overflow-guard h1 {
+      flex-wrap: wrap !important;
+      gap: 0.5rem !important;
+      font-size: clamp(2.5rem, 13.5vw, 3.25rem) !important;
+      line-height: 0.9 !important;
+      max-width: 100% !important;
+      overflow-wrap: anywhere !important;
+    }
+
+    .overflow-guard h1 img {
+      width: clamp(2rem, 9vw, 2.5rem) !important;
+      height: clamp(2rem, 9vw, 2.5rem) !important;
+      flex: 0 0 auto !important;
+    }
+
+    .overflow-guard a[href="/bookings"],
+    .overflow-guard a[href="/events"],
+    .overflow-guard a[href="/backline"] {
+      min-height: 4.25rem !important;
+      min-width: 4.25rem !important;
+      text-align: center !important;
+      overflow-wrap: anywhere !important;
+    }
+  }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────────────
+   Only the bookings schedule and the events list are meant to print (each page
+   renders a `hidden print:block` summary; its on-screen UI is `print:hidden`).
+   Here we strip the global chrome and force an ink-friendly, light layout. */
+@media print {
+  html,
+  body,
+  #root {
+    background: #fff !important;
+  }
+
+  body {
+    color: #111 !important;
+    min-height: 0 !important;
+  }
+
+  /* App chrome + overlays never print. */
+  header,
+  footer,
+  [data-sonner-toaster],
+  [data-radix-popper-content-wrapper],
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Flatten decoration; let backgrounds fall to white to save ink. */
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

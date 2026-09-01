@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+coverage
+.vercel
+.vite
+.codex/
+.agents/
+*.tsbuildinfo
+# NOTE: agent/planning docs (CLAUDE.md, AGENTS.md, PLANS.md, SECURITY.md,
+# docs/agent/) are tracked in the PRIVATE repo so they sync across machines.
+# scripts/release.sh strips them from the public mirror (PRIVATE_PATHS) and
+# aborts if any is still tracked — so they never leak. Do NOT re-ignore them.
+supabase/.temp/
+# .claude/ project config (launch.json, commands, settings) is tracked in the
+# PRIVATE repo so it syncs across machines; release.sh strips it from the public
+# mirror (PRIVATE_PATHS) and aborts if it's still tracked. Keep machine-local out.
+.claude/settings.local.json
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+.Rhistory
+AGENTS.md
+CLAUDE.md
+PLANS.md
+docs/agent/
+scripts/release-assets/
+.claude/
+scripts/release.sh
