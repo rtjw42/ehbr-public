@@ -27,9 +27,15 @@ const resolveLink = (rawValue: string) => {
 export const ContactLinks = ({
   fields,
   iconClassName,
+  glyphClassName = "h-4 w-4",
 }: {
   fields: ContactLinkField[];
+  /** The tappable box — keep it at least 44px (`min-h-11 min-w-11`) wherever it
+   * renders; the footer hides that box behind negative margins so the strip stays
+   * dense, while the landing About card shows it as a frosted chip. */
   iconClassName: string;
+  /** Glyph size inside that box. Defaults to the footer's 16px. */
+  glyphClassName?: string;
 }) => {
   const groups = groupContactFieldsByType(fields);
 
@@ -44,7 +50,7 @@ export const ContactLinks = ({
           const { href, target, rel } = resolveLink(group.fields[0].value);
           return (
             <a key={group.type} href={href} target={target} rel={rel} aria-label={typeLabel} title={typeLabel} className={iconClassName}>
-              <Icon className="h-4 w-4" />
+              <Icon className={glyphClassName} />
             </a>
           );
         }
@@ -53,7 +59,7 @@ export const ContactLinks = ({
         return (
           <Popover key={group.type}>
             <PopoverTrigger type="button" aria-label={typeLabel} className={iconClassName}>
-              <Icon className="h-4 w-4" />
+              <Icon className={glyphClassName} />
             </PopoverTrigger>
             {/* Anchored close to the icon (small sideOffset) and kept clear of the
                 viewport edges on mobile (collisionPadding); Radix flips it upward in

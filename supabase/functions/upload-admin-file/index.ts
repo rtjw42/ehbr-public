@@ -6,12 +6,8 @@
 // server-side MIME + byte-size limits (MAX_*_BYTES) so a valid admin still cannot
 // push oversized or unexpected file types.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {
-  assertRequestSize,
-  cleanErrorMessage,
-  handleCors,
-  json,
-} from "../_shared/security.ts";
+import { PublicError, publicError } from "../_shared/public-error.ts";
+import { assertRequestSize, handleCors, json } from "../_shared/security.ts";
 
 const MAX_EVENT_POSTER_BYTES = 5 * 1024 * 1024;
 const MAX_BACKLINE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -55,24 +51,24 @@ const cleanFileName = (value: string) => {
 };
 
 const validateEventPoster = (file: File, detectedMime: string) => {
-  if (file.size > MAX_EVENT_POSTER_BYTES) throw new Error("Poster image must be 5MB or smaller.");
+  if (file.size > MAX_EVENT_POSTER_BYTES) throw new PublicError("Poster image must be 5MB or smaller.", 413);
   if (file.type !== "image/jpeg" || detectedMime !== "image/jpeg") {
-    throw new Error("Poster image must be a JPEG image.");
+    throw new PublicError("Poster image must be a JPEG image.", 400);
   }
 };
 
 const validateBacklineFile = (file: File, contentType: BacklineContentType, detectedMime: string) => {
   if (contentType === "pdf") {
-    if (file.size > MAX_BACKLINE_PDF_BYTES) throw new Error("PDF files must be 10MB or smaller.");
+    if (file.size > MAX_BACKLINE_PDF_BYTES) throw new PublicError("PDF files must be 10MB or smaller.", 413);
     if (file.type !== "application/pdf" || detectedMime !== "application/pdf") {
-      throw new Error("PDF file must be a PDF.");
+      throw new PublicError("PDF file must be a PDF.", 400);
     }
     return;
   }
 
-  if (file.size > MAX_BACKLINE_IMAGE_BYTES) throw new Error("Images must be 5MB or smaller.");
+  if (file.size > MAX_BACKLINE_IMAGE_BYTES) throw new PublicError("Images must be 5MB or smaller.", 413);
   if (!allowedImageTypes.has(file.type) || file.type !== detectedMime) {
-    throw new Error("Image file must be a JPEG, PNG, WebP, or GIF image.");
+    throw new PublicError("Image file must be a JPEG, PNG, WebP, or GIF image.", 400);
   }
 };
 
@@ -175,11 +171,10 @@ Deno.serve(async (req) => {
 
     return json(origin, { error: "Invalid upload request." }, 400);
   } catch (error) {
+    // A storage error (`throw error` above) is not a PublicError, so it goes out
+    // as the fallback: its reason lives in these logs, never in the response.
     console.error("upload-admin-file error", error);
-    const message = cleanErrorMessage(error, "Could not upload file.");
-    const status = /too large/i.test(message)
-      ? 413
-      : /required|invalid|must|5MB|10MB|PDF|JPEG|PNG|WebP|GIF|request size/i.test(message) ? 400 : 500;
+    const { message, status } = publicError(error, "Could not upload file.");
     return json(origin, { error: message }, status);
   }
 });

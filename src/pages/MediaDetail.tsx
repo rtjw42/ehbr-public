@@ -6,7 +6,7 @@
 // row; this is the only place pics/vids/setlist are shown. The page is public (RLS
 // stays public-read); only the inline edit affordance is admin-gated.
 // Realtime on the event row keeps it fresh while editing.
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Images, MapPin, Music, Pencil, Play, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,10 +19,9 @@ import { useI18n } from "@/hooks/useI18n";
 import { loadEventById } from "@/services/events";
 import { AppleMusicIcon, SpotifyIcon, YouTubeIcon } from "@/components/BrandIcons";
 import { FadeInImg } from "@/components/FadeInImg";
-import { MediaSetlistEditor } from "@/components/MediaSetlistEditor";
 import { PageShell } from "@/components/PageShell";
+import { LazyMediaSetlistForm, preloadMediaSetlistForm } from "@/lib/form-loaders";
 import { cn } from "@/lib/utils";
-import { Collapse } from "@/components/ui/collapse";
 
 const PLATFORM_LABELS: Record<SetlistPlatform, string> = {
   spotify: "Spotify",
@@ -111,6 +110,8 @@ const MediaDetail = () => {
           {showAdminControls && (
             <button
               type="button"
+              onPointerEnter={preloadMediaSetlistForm}
+              onFocus={preloadMediaSetlistForm}
               onClick={() => setEditorOpen(true)}
               className="btn-overlay absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-fast"
             >
@@ -163,8 +164,7 @@ const MediaDetail = () => {
               </div>
             )}
 
-            {/* RIGHT panel: videos + photos, each a collapsible dropdown matching the
-                setlist, in one frosted surface. */}
+            {/* RIGHT panel: videos + photos, always open, in one frosted surface. */}
             {hasRightPanel && (
               <div className={cn("min-w-0 space-y-8 rounded-2xl px-5 py-5 shadow-sm frost-panel dark:shadow-none", hasLeftPanel && "mt-6 lg:mt-0")}>
                 {videos.length > 0 && (
@@ -202,16 +202,30 @@ const MediaDetail = () => {
         )}
       </main>
 
+      {/* Lazy + gated, both halves: see `lib/form-loaders.ts`. */}
       {showAdminControls && (
-        <MediaSetlistEditor event={event} open={editorOpen} onClose={() => setEditorOpen(false)} onSaved={load} />
+        <Suspense fallback={null}>
+          <LazyMediaSetlistForm
+            event={event}
+            open={editorOpen}
+            onClose={() => setEditorOpen(false)}
+            onSaved={() => {
+              setEditorOpen(false);
+              load();
+            }}
+          />
+        </Suspense>
       )}
     </PageShell>
   );
 };
 
-// Shared collapsible section — large label + chevron header, body via <Collapse>
-// (grid-rows height glide). Used for setlist, videos, and photos so the three
-// dropdowns stay identical.
+// Collapsible section — large label + chevron header, body revealed in flow. Only
+// the setlist uses it (videos + photos stay open). The body mounts at full height
+// in one layout commit, then slides down from under the header on transform +
+// opacity (`.disclosure-reveal`, clipped here). It replaced a grid-rows height
+// glide (2026-09-15): that re-laid-out all 30 song rows every frame and stuttered
+// on phones — DESIGN_SYSTEM → Motion rule #2. Close is instant.
 const CollapsibleSection = ({
   label,
   open,
@@ -231,9 +245,13 @@ const CollapsibleSection = ({
       className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
     >
       <span className={SECTION_LABEL_CLASS}>{label}</span>
-      <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-base", open && "rotate-180")} />
+      <ChevronDown className={cn("h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-slow", open && "rotate-180")} />
     </button>
-    <Collapse show={open} className="px-5 pb-5">{children}</Collapse>
+    {open && (
+      <div className="overflow-hidden">
+        <div className="disclosure-reveal px-5 pb-5">{children}</div>
+      </div>
+    )}
   </section>
 );
 

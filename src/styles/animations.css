@@ -34,6 +34,28 @@
     transition: opacity var(--duration-base) var(--ease-standard);
   }
 
+  /*
+   * Disclosure reveal — a section opening in flow (MediaDetail's setlist). The
+   * layout commits ONCE at full height; the content then slides down from under
+   * its header and fades in, clipped by an overflow-hidden parent. Transform +
+   * opacity only, so a 30-row list opens at the compositor's frame rate instead of
+   * re-laying-out every frame (which is what the old grid-rows height glide did,
+   * and why it stuttered on phones). Closing is instant — nothing to animate.
+   */
+  @keyframes disclosure-reveal {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -0.75rem, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .disclosure-reveal {
+    animation: disclosure-reveal var(--duration-slow) var(--ease-standard) both;
+  }
+
   @keyframes skeleton-shimmer {
     to { transform: translateX(100%); }
   }

@@ -217,8 +217,7 @@
     }
   }
 
-  .btn-interactive[data-state="open"],
-  .btn-interactive.is-active {
+  .btn-interactive[data-state="open"] {
     background-color: var(--interactive-bg);
     color: var(--interactive-text);
     border-color: var(--interactive-border);
@@ -543,24 +542,6 @@
     min-height: 0;
   }
 
-  .mobile-safe-form-grid > *,
-  .mobile-safe-form-grid input,
-  .mobile-safe-form-grid button {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  input[type="date"],
-  input[type="time"],
-  input[type="datetime-local"] {
-    box-sizing: border-box;
-    display: block;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
-
   .overflow-guard {
     max-width: 100%;
     overflow-x: clip;
@@ -661,34 +642,6 @@
   }
 
   @media (max-width: 767px), (hover: none) and (pointer: coarse) {
-    input[type="date"],
-    input[type="time"],
-    input[type="datetime-local"] {
-      min-height: 44px;
-      height: 44px;
-      padding-top: 0;
-      padding-bottom: 0;
-      line-height: 44px;
-    }
-
-    input[type="date"]::-webkit-date-and-time-value,
-    input[type="time"]::-webkit-date-and-time-value,
-    input[type="datetime-local"]::-webkit-date-and-time-value {
-      display: flex;
-      min-width: 0;
-      max-width: 100%;
-      min-height: 44px;
-      align-items: center;
-      text-align: left;
-    }
-
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator,
-    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-      flex-shrink: 0;
-      margin-left: auto;
-    }
-
     [role="dialog"],
     .dialog-scroll-shell,
     .overflow-y-auto {
@@ -697,8 +650,7 @@
     }
 
     body,
-    #root,
-    .min-h-screen {
+    #root {
       min-height: 100lvh;
     }
 
@@ -711,18 +663,10 @@
      blur/skeleton cost tracks pointer type with the rest of the motion system.
      :not(full) = lite (the coarse-pointer performance tier); it strips blur and
      drops the shimmer, matching the prior (max-width:767px),(coarse) behavior on
-     real devices. */
-  html:not([data-motion="full"]) .blur-3xl,
-  html:not([data-motion="full"]) .blur-2xl,
-  html:not([data-motion="full"]) .blur-xl {
-    filter: none !important;
-  }
-
+     real devices. Only the two backdrop utilities the app actually uses are
+     listed — add a heavier `blur-*` / `backdrop-blur-*` somewhere and add it here. */
   html:not([data-motion="full"]) .backdrop-blur,
-  html:not([data-motion="full"]) .backdrop-blur-sm,
-  html:not([data-motion="full"]) .backdrop-blur-md,
-  html:not([data-motion="full"]) .backdrop-blur-lg,
-  html:not([data-motion="full"]) .backdrop-blur-xl {
+  html:not([data-motion="full"]) .backdrop-blur-sm {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }

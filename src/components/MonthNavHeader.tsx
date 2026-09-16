@@ -1,6 +1,6 @@
 // ── Month nav header ─────────────────────────────────────────────────────────
-// "July 2026" + prev/next, shared by both calendars (DateField's single-date picker and
-// MonthDatePicker's pick-dates grid) so their nav can't drift apart. `canGoPrev` is how
+// "July 2026" + prev/next, shared by both calendars (CalendarPanel's single-date picker
+// and MonthDatePicker's pick-dates grid) so their nav can't drift apart. `canGoPrev` is how
 // a caller pins the calendar at its earliest bookable month.
 import type { ReactNode } from "react";
 import { addMonths, format, isSameMonth } from "date-fns";

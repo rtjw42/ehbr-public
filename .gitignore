@@ -15,6 +15,10 @@ coverage
 .vite
 .codex/
 .agents/
+# `npx skills add` installs into .agents/ (ignored above) and leaves symlinks plus a
+# lockfile behind; both are machine-local.
+.claude/skills/
+skills-lock.json
 *.tsbuildinfo
 # NOTE: agent/planning docs (CLAUDE.md, AGENTS.md, PLANS.md, SECURITY.md,
 # docs/agent/) are tracked in the PRIVATE repo so they sync across machines.
@@ -46,3 +50,5 @@ docs/agent/
 scripts/release-assets/
 .claude/
 scripts/release.sh
+.github/workflows/backup.yml
+.github/dependabot.yml

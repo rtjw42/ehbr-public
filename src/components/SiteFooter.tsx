@@ -1,17 +1,16 @@
 // ── Site footer ──────────────────────────────────────────────────────────────
-// Global footer: the primary public contact plus legal links. Admins get an inline
-// contact manager (ContactManagerDialog below). Footer contacts are loaded once and
-// re-fetched on admin save — deliberately not realtime (see the load effect's note).
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+// Global footer: the primary public contact plus legal links. Footer contacts are
+// loaded once and re-fetched on admin save — deliberately not realtime (see the load
+// effect's note).
+//
+// This file is a STATIC import in App.tsx, so whatever it references ships in the
+// main bundle on every route. That is why the admin contact editor lives in its own
+// lazy, admin-gated module rather than here, and why it must stay that way.
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { getErrorMessage } from "@/lib/errors";
 import { getLegalContent, type LegalCopy } from "@/lib/legal";
-import { stripHtmlText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useI18n } from "@/hooks/useI18n";
@@ -19,47 +18,18 @@ import { LegalBlocks } from "@/components/LegalCopyRenderer";
 import { ContactLinks } from "@/components/ContactLinks";
 import {
   loadContacts,
-  saveContact,
-  type ContactFieldDraft,
   type ContactFieldType,
   type ContactWithFields,
 } from "@/services/contacts";
-import { FOOTER_CONTACT_TYPES, contactFieldIcon, contactFieldLabel, linkedContactTypes, sortContactFieldsByType } from "@/lib/contact-fields";
+import { FOOTER_CONTACT_LABEL, linkedContactTypes } from "@/lib/contact-fields";
+// Admin-only, so it is BOTH lazy and gated below: `lazy()` alone would still fetch
+// the chunk the moment the component mounted, and this footer is on every route.
+import { LazyContactsForm, preloadContactsForm } from "@/lib/form-loaders";
 
-// `uid` is a client-only stable key for React reconciliation — keying by array
-// index re-binds input state to the wrong field when a middle field is removed.
-type EditableField = ContactFieldDraft & { uid: string };
-
-const newFieldUid = () =>
-  (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `field-${Math.random().toString(36).slice(2)}`);
 type LegalDialogKind = "privacy" | "terms" | null;
 
-const MAX_CONTACT_FIELDS = 5;
-const FOOTER_CONTACT_LABEL = "Footer links";
-
-const contactFieldPlaceholder = (fieldType: ContactFieldType, t: (key: "footer.placeholder.telegramHandle") => string) => {
-  if (fieldType === "instagram") return "@eusoff_band";
-  if (fieldType === "telegram") return t("footer.placeholder.telegramHandle");
-  if (fieldType === "email") return "name@example.com";
-  if (fieldType === "phone") return "+65 8123 4567";
-  if (fieldType === "whatsapp") return "+65 8123 4567";
-  return "";
-};
-
-const emptyFooterContact = (): ContactWithFields => ({
-  id: "",
-  label: FOOTER_CONTACT_LABEL,
-  sort_order: 10,
-  active: true,
-  created_at: "",
-  updated_at: "",
-  site_contact_fields: [
-    { id: "draft-instagram", contact_id: "", label: "Instagram", value: "", field_type: "instagram", sort_order: 10, created_at: "", updated_at: "" },
-  ],
-});
-
 export const SiteFooter = () => {
-  const { showAdminControls, ensureAdminSession } = useAdmin();
+  const { showAdminControls } = useAdmin();
   const { language, t } = useI18n();
   const [contacts, setContacts] = useState<ContactWithFields[]>([]);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -77,7 +47,7 @@ export const SiteFooter = () => {
   useEffect(() => {
     // Footer contacts change very rarely, so load once instead of holding an
     // always-on realtime channel for near-static data. An admin editing contacts
-    // re-fetches via the manager dialog's onSaved.
+    // re-fetches via the contacts form's onSaved.
     void loadFooterContacts();
   }, [loadFooterContacts]);
 
@@ -102,9 +72,12 @@ export const SiteFooter = () => {
           <div className="relative flex max-w-full items-center justify-center text-[hsl(var(--color-footer-foreground))]/88">
             <div className={cn("flex min-w-0 flex-wrap items-center justify-center gap-x-2.5 gap-y-1", showAdminControls && "px-7")}>
               <span className="text-[hsl(var(--color-footer-foreground))]/78">{t("footer.contactUs")}</span>
+              {/* 44px hit box (min touch target) pulled back to the row's 24px with
+                  negative margins, so the strip keeps its density and the glyph its
+                  16px size — only the tappable area grew. */}
               <ContactLinks
                 fields={footerLinks}
-                iconClassName="inline-flex h-6 w-6 items-center justify-center text-[hsl(var(--color-footer-foreground))]/88 transition-opacity duration-base hover:opacity-60"
+                iconClassName="-mx-1.5 -my-2.5 inline-flex h-11 w-11 items-center justify-center text-[hsl(var(--color-footer-foreground))]/88 transition-opacity duration-base hover:opacity-60"
               />
             </div>
             {showAdminControls ? (
@@ -113,6 +86,8 @@ export const SiteFooter = () => {
                   type="button"
                   size="icon"
                   variant="ghost"
+                  onPointerEnter={preloadContactsForm}
+                  onFocus={preloadContactsForm}
                   onClick={() => setManagerOpen(true)}
                   aria-label={t("footer.editContacts")}
                   className="h-6 w-6 rounded-none border-0 bg-transparent p-0 text-[hsl(var(--color-footer-foreground))]/88 transition-opacity duration-base hover:bg-transparent hover:text-[hsl(var(--color-footer-foreground))] hover:opacity-60"
@@ -144,206 +119,24 @@ export const SiteFooter = () => {
         </div>
       </div>
 
-      <ContactManagerDialog
-        open={managerOpen}
-        contact={footerContact}
-        ensureAdminSession={ensureAdminSession}
-        onClose={() => setManagerOpen(false)}
-        onSaved={() => {
-          setManagerOpen(false);
-          loadFooterContacts();
-        }}
-      />
+      {showAdminControls && (
+        <Suspense fallback={null}>
+          <LazyContactsForm
+            open={managerOpen}
+            contact={footerContact}
+            onClose={() => setManagerOpen(false)}
+            onSaved={() => {
+              setManagerOpen(false);
+              loadFooterContacts();
+            }}
+          />
+        </Suspense>
+      )}
       <LegalDialog copy={legalDialog === "privacy" ? legalContent.privacy : legalContent.terms} open={!!legalDialog} onClose={() => setLegalDialog(null)} />
     </footer>
   );
 };
 
-const ContactManagerDialog = ({
-  open,
-  contact,
-  ensureAdminSession,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  contact: ContactWithFields | null;
-  ensureAdminSession: () => Promise<boolean>;
-  onClose: () => void;
-  onSaved: () => void;
-}) => {
-  const [fields, setFields] = useState<EditableField[]>([]);
-  const [openTypes, setOpenTypes] = useState<Set<ContactFieldType>>(new Set());
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<{ fields?: string }>({});
-  const { t } = useI18n();
-
-  useEffect(() => {
-    if (!open) return;
-    const editing = contact ?? emptyFooterContact();
-    const initialFields = sortContactFieldsByType<EditableField>(
-      editing.site_contact_fields?.length
-        ? editing.site_contact_fields
-            .slice()
-            .filter((field) => linkedContactTypes.has(field.field_type as ContactFieldType))
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((field, index) => ({
-              uid: field.id || newFieldUid(),
-              id: field.id,
-              label: contactFieldLabel(field.field_type, field.label),
-              value: field.value,
-              field_type: field.field_type as ContactFieldType,
-              sort_order: field.sort_order ?? (index + 1) * 10,
-            }))
-        : [{ uid: newFieldUid(), label: "Instagram", value: "", field_type: "instagram", sort_order: 10 }],
-    );
-    setFields(initialFields);
-    // Open the social sections that already have links; leave empty ones collapsed.
-    setOpenTypes(new Set(initialFields.map((field) => field.field_type)));
-    setErrors({});
-  }, [contact, open]);
-
-  const toggleType = (type: ContactFieldType) =>
-    setOpenTypes((current) => {
-      const next = new Set(current);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
-      return next;
-    });
-
-  const addLink = (type: ContactFieldType) => {
-    setFields((current) => sortContactFieldsByType([
-      ...current,
-      { uid: newFieldUid(), label: contactFieldLabel(type, ""), value: "", field_type: type, sort_order: (current.length + 1) * 10 },
-    ]));
-    setOpenTypes((current) => new Set(current).add(type));
-    setErrors((current) => ({ ...current, fields: undefined }));
-  };
-
-  const removeLink = (uid: string) =>
-    setFields((current) => current.filter((field) => field.uid !== uid));
-
-  const setLinkValue = (uid: string, value: string) => {
-    setFields((current) => current.map((field) => field.uid === uid ? { ...field, value } : field));
-    setErrors((current) => ({ ...current, fields: undefined }));
-  };
-
-  const save = async () => {
-    if (saving) return;
-    if (!(await ensureAdminSession())) return;
-    const editing = contact ?? emptyFooterContact();
-    const cleanFields = fields
-      .slice(0, MAX_CONTACT_FIELDS)
-      .map((field, index) => ({
-        ...field,
-        label: contactFieldLabel(field.field_type, stripHtmlText(field.label)),
-        value: stripHtmlText(field.value),
-        sort_order: (index + 1) * 10,
-      }))
-      .filter((field) => field.value);
-
-    if (cleanFields.length === 0) {
-      setErrors((current) => ({ ...current, fields: t("footer.fieldsRequired") }));
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await saveContact({
-        editingId: editing.id || undefined,
-        label: FOOTER_CONTACT_LABEL,
-        fields: cleanFields,
-        sortOrder: editing.sort_order ?? 10,
-      });
-      toast.success(t("footer.updated"));
-      onSaved();
-    } catch (error: unknown) {
-      toast.error(error instanceof TypeError ? t("common.networkIssue") : getErrorMessage(error, t("common.couldNotSave")));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="h-[min(80svh,34rem)] max-w-[min(30rem,calc(100vw-1rem))]">
-        <DialogHeader>
-          <DialogTitle>{t("footer.manageContacts")}</DialogTitle>
-        </DialogHeader>
-        <DialogBody className="space-y-5 text-left">
-          <div className="space-y-3">
-            <Label>{t("footer.fields")}</Label>
-            {errors.fields && <p className="text-xs text-destructive">{errors.fields}</p>}
-            {FOOTER_CONTACT_TYPES.map((type) => {
-              const Icon = contactFieldIcon(type);
-              const typeFields = fields.filter((field) => field.field_type === type);
-              const isOpen = openTypes.has(type);
-              return (
-                <div key={type} className="overflow-hidden rounded-xl border bg-background/60">
-                  <button
-                    type="button"
-                    onClick={() => toggleType(type)}
-                    aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{contactFieldLabel(type, "")}</span>
-                      {typeFields.length > 0 && (
-                        <span className="type-badge rounded-full bg-muted px-1.5 text-muted-foreground">{typeFields.length}</span>
-                      )}
-                    </span>
-                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-base", isOpen && "rotate-180")} />
-                  </button>
-                  {isOpen && (
-                    <div className="space-y-2.5 px-4 pb-4">
-                      {typeFields.map((field) => (
-                        <div key={field.uid} className="flex items-center gap-2">
-                          <Input
-                            value={field.value}
-                            onChange={(event) => setLinkValue(field.uid, event.target.value)}
-                            maxLength={255}
-                            placeholder={contactFieldPlaceholder(type, t)}
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeLink(field.uid)}
-                            aria-label={t("footer.removeField")}
-                            className="shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={fields.length >= MAX_CONTACT_FIELDS}
-                        onClick={() => addLink(type)}
-                      >
-                        <Plus className="h-4 w-4" /> {contactFieldLabel(type, "")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </DialogBody>
-        <DialogFooter className="gap-3">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">{t("common.cancel")}</Button>
-          <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("common.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 const LegalDialog = ({ copy, open, onClose }: { copy: LegalCopy; open: boolean; onClose: () => void }) => {
   const { t } = useI18n();

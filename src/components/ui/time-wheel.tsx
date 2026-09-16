@@ -1,7 +1,8 @@
 // ── TimeWheel ────────────────────────────────────────────────────────────────
-// The iOS-style multi-column time wheel, extracted from TimeSelect so ONE
-// implementation serves both hosts: the legacy inline panel (TimeSelect, still
-// used by EventForm) and the Form System's PickerDropdown.
+// The iOS-style multi-column time wheel. Every time input in the app is this one
+// implementation, mounted inside a PickerDropdown — BookingForm and EventForm both
+// reach it that way. (It was extracted from the old inline TimeSelect panel, which
+// the EventForm port deleted along with the rest of the FLIP picker family.)
 //
 // Hour │ Minute (00/15/30/45) │ AM·PM in 12h; Hour │ Minute in 24h — the literal
 // iOS UIDatePicker layout, so each wheel is a short flick instead of one 96-item
@@ -538,5 +539,3 @@ export function TimeWheel({ value, onChange, minTime, size = "default", classNam
     </div>
   );
 }
-
-export default TimeWheel;

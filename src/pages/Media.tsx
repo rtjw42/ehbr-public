@@ -4,7 +4,7 @@
 // where the content lives. The page is public (RLS stays public-read); only the
 // "Add media" action is admin-gated. Realtime on the events table keeps the wall
 // fresh while an admin edits content elsewhere.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Music, Play, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,20 +15,23 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useI18n } from "@/hooks/useI18n";
 import { loadEvents } from "@/services/events";
 import { FadeInImg } from "@/components/FadeInImg";
-import { MediaSetlistEditor } from "@/components/MediaSetlistEditor";
 import { PageShell } from "@/components/PageShell";
+import { LazyMediaSetlistForm, preloadMediaSetlistForm } from "@/lib/form-loaders";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const getMediaSortTime = (event: EventItem) => new Date(event.end_date ?? event.event_date).getTime();
 
 const Media = () => {
-  const { isAdmin } = useAdmin();
+  const { isAdmin, showAdminControls } = useAdmin();
   const { t, language } = useI18n();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // The record survives a close so the form has something to render while it
+  // exit-animates; `open` is its own flag (DESIGN_SYSTEM → Form System → Placement).
   const [editorEvent, setEditorEvent] = useState<EventItem | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +71,7 @@ const Media = () => {
   const pickEventToTag = (event: EventItem) => {
     setPickerOpen(false);
     setEditorEvent(event);
+    setEditorOpen(true);
   };
 
   return (
@@ -94,6 +98,10 @@ const Media = () => {
           </div>
           {isAdmin && (
             <Button
+              // The picker is only a stop on the way to the editor, so warm the
+              // editor's chunk here rather than when a row is tapped.
+              onPointerEnter={preloadMediaSetlistForm}
+              onFocus={preloadMediaSetlistForm}
               onClick={() => setPickerOpen(true)}
               disabled={events.length === 0}
               className="btn-cta min-h-11 w-full shrink-0 justify-center rounded-full px-5 text-base font-semibold shadow-md transition-[background-color,color,border-color,box-shadow] duration-fast hover:shadow-lg sm:w-auto"
@@ -125,13 +133,20 @@ const Media = () => {
         onPick={pickEventToTag}
       />
 
-      {editorEvent && (
-        <MediaSetlistEditor
-          event={editorEvent}
-          open={!!editorEvent}
-          onClose={() => setEditorEvent(null)}
-          onSaved={load}
-        />
+      {/* Both halves are load-bearing: lazy so the editor is its own chunk, and the
+          admin gate so a public visitor never mounts it and so never fetches it. */}
+      {showAdminControls && (
+        <Suspense fallback={null}>
+          <LazyMediaSetlistForm
+            event={editorEvent}
+            open={editorOpen}
+            onClose={() => setEditorOpen(false)}
+            onSaved={() => {
+              setEditorOpen(false);
+              load();
+            }}
+          />
+        </Suspense>
       )}
     </PageShell>
   );

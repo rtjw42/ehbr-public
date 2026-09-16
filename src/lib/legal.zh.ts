@@ -3,7 +3,7 @@ import { CONTACT_EMAIL } from "@/lib/site-config";
 
 export const PRIVACY_COPY: LegalCopy = {
   title: "隐私政策",
-  updated: "最后更新：2026 年 7 月",
+  updated: "最后更新：2026 年 9 月",
   blocks: [
     {
       heading: "概述",
@@ -18,12 +18,14 @@ export const PRIVACY_COPY: LegalCopy = {
         { label: "提交数据", text: "提交房间申请时提供的活动名称和姓名" },
         { label: "使用数据", text: "通过 Vercel Analytics 收集的匿名、汇总的页面浏览统计信息。其中不包含任何个人信息，不设置 Cookie，也不进行跨站追踪。" },
         { label: "性能数据", text: "通过 Vercel Speed Insights 收集的匿名加载速度和响应性能指标（Web Vitals），用于监测和改进服务。该数据不包含任何个人信息，不设置 Cookie，也不进行跨站追踪。" },
+        { label: "防滥用数据", text: "提交公开表单时，我们会记录您 IP 地址经加盐处理的单向哈希值，用于实施访问频率限制并阻止自动化滥用行为。您的 IP 地址本身不会被存储，该哈希值也无法还原为原始地址，且此类记录将在 24 小时后自动删除。此外，每个公开表单上的人机验证 Cloudflare Turnstile 也会接收您的 IP 地址和浏览器信号，以完成该项验证。" },
+        { label: "错误诊断数据", text: "当出现故障时，故障的技术细节（所在页面、浏览器类型及调用堆栈）会被发送至 Sentry，以便修复问题。该功能仅在您接受本政策后启用，并已配置为不发送任何个人信息。" },
       ],
     },
     {
       heading: "信息用途",
       paragraphs: [
-        "提交数据用于处理和管理乐队排练室申请。为协调共享日程，已获批准申请的详情（其活动名称及所提供的姓名）会被发送至供乐队管理员和成员使用的私密 Telegram 群组。使用数据和性能数据仅用于了解整体流量模式、监测页面加载速度并改进服务。两者均不会用于营销或用户画像。",
+        "提交数据用于处理和管理乐队排练室申请。为协调共享日程，已获批准申请的详情（其活动名称及所提供的姓名）会被发送至供乐队管理员和成员使用的私密 Telegram 群组。使用数据和性能数据仅用于了解整体流量模式、监测页面加载速度并改进服务；防滥用数据仅用于实施访问频率限制，错误诊断数据仅用于修复故障。以上数据均不会用于营销或用户画像。",
       ],
     },
     {
@@ -35,6 +37,9 @@ export const PRIVACY_COPY: LegalCopy = {
         { label: "Supabase", text: "数据库及身份验证基础设施。隐私政策与条款", href: "https://supabase.com/privacy" },
         { label: "Vercel", text: "托管与分析服务。隐私政策与条款", href: "https://vercel.com/legal/privacy-policy" },
         { label: "Telegram", text: "即时通讯平台。当申请获批时，其活动名称及所提供的姓名会被发送至供乐队管理员和成员协调日程使用的私密 Telegram 群组。隐私政策", href: "https://telegram.org/privacy" },
+        { label: "Cloudflare", text: "机器人防护。Turnstile 运行于每一个公开表单，并接收您的 IP 地址和浏览器信号，以区分真人与自动化滥用行为。隐私政策", href: "https://www.cloudflare.com/privacypolicy/" },
+        { label: "Resend", text: "事务性邮件发送服务。仅用于管理员账户邮件（登录邀请和密码重置），因此只会处理管理员的电子邮箱地址。提交排练室申请不会发送任何邮件，与该服务商完全无关。隐私政策", href: "https://resend.com/legal/privacy-policy" },
+        { label: "Sentry", text: "错误监测服务，仅在您接受本政策后启用。接收故障的技术细节，并已配置为排除个人信息。隐私政策", href: "https://sentry.io/privacy/" },
       ],
     },
     {
@@ -46,7 +51,7 @@ export const PRIVACY_COPY: LegalCopy = {
     {
       heading: "数据保留",
       paragraphs: [
-        "提交数据将出于管理目的予以保留，并定期进行审查。目前没有自动删除计划。您可以随时要求删除数据。",
+        "提交数据将出于管理目的予以保留，并定期进行审查。目前没有自动删除计划，您可以随时要求删除数据。唯一的例外是防滥用数据，它会在 24 小时后自动删除，无需任何人操作。",
       ],
     },
     {
@@ -66,7 +71,7 @@ export const PRIVACY_COPY: LegalCopy = {
 
 export const TERMS_COPY: LegalCopy = {
   title: "使用条款",
-  updated: "最后更新：2026 年 7 月",
+  updated: "最后更新：2026 年 9 月",
   blocks: [
     {
       heading: "概述",
@@ -113,9 +118,9 @@ export const TERMS_COPY: LegalCopy = {
       paragraphs: ["使用本服务完全由您自行承担风险。"],
     },
     {
-      heading: "数据分析",
+      heading: "数据分析与监测",
       paragraphs: [
-        "使用本应用即表示您知悉，系统将通过 Vercel Analytics 收集匿名、汇总的页面浏览数据，并通过 Vercel Speed Insights 收集匿名的性能指标（Web Vitals）。该数据不包含任何个人信息。",
+        "使用本应用即表示您知悉，系统将通过 Vercel Analytics 收集匿名、汇总的页面浏览数据，通过 Vercel Speed Insights 收集匿名的性能指标（Web Vitals），并将错误诊断数据发送至 Sentry。该数据不包含任何个人信息。此外，公开表单的提交会基于您 IP 地址的单向哈希值进行频率限制，并由 Cloudflare Turnstile 进行验证。以上各项均在《隐私政策》中详细说明。",
       ],
       links: [{ label: "Vercel 隐私政策", href: "https://vercel.com/legal/privacy-policy" }],
     },

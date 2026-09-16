@@ -86,6 +86,20 @@ describe("event service helpers", () => {
     expect(normalizeEventError({ message: "raw database detail" }, "Could not save event.")).toBe("Could not save event.");
   });
 
+  it("passes through the Edge Function's access refusals, but never raw internals", () => {
+    // These are our own fixed strings and name the actual cause — a rejected dev
+    // origin used to be indistinguishable from a bad file.
+    expect(normalizeEventError({ message: "Origin not allowed." }, "Could not upload poster."))
+      .toBe("Origin not allowed.");
+    expect(normalizeEventError({ message: "Admin session is required." }, "Could not upload poster."))
+      .toBe("Admin session is required.");
+    expect(normalizeEventError({ message: "Admin access is required." }, "Could not upload poster."))
+      .toBe("Admin access is required.");
+    // The swallowing property still holds for anything unrecognised.
+    expect(normalizeEventError({ message: 'relation "events" does not exist' }, "Could not upload poster."))
+      .toBe("Could not upload poster.");
+  });
+
   it("validates poster blobs by size and type", () => {
     expect(() => validatePosterBlob(new Blob(["poster"], { type: "image/jpeg" }))).not.toThrow();
     expect(() => validatePosterBlob(new Blob([new Uint8Array(5 * 1024 * 1024 + 1)], { type: "image/jpeg" })))

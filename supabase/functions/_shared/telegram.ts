@@ -20,7 +20,7 @@ type TelegramApiBody = {
   parameters?: { retry_after?: number };
 };
 
-export const callTelegram = async (
+const callTelegram = async (
   method: string,
   payload: Record<string, unknown>,
   attempt = 0,

@@ -12,7 +12,8 @@
 // just an unban. There is no admin-API call to revoke another user's live session
 // by id, so the ≤1h token TTL is the residual window (documented in OPERATIONS.md).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { cleanErrorMessage, handleCors, json, readJsonBody } from "../_shared/security.ts";
+import { publicError } from "../_shared/public-error.ts";
+import { handleCors, json, readJsonBody } from "../_shared/security.ts";
 
 const MAX_JSON_BODY_BYTES = 4 * 1024;
 // ~100 years — GoTrue has no "infinite", so a far-future duration is effectively
@@ -101,8 +102,10 @@ Deno.serve(async (req) => {
 
     return json(origin, { ok: true });
   } catch (error) {
+    // Only the auth admin API throws past the checks above; its wording is internal.
     console.error("set-staff-ban error", error);
-    return json(origin, { error: cleanErrorMessage(error, "Could not update this person.") }, 500);
+    const { message, status } = publicError(error, "Could not update this person.");
+    return json(origin, { error: message }, status);
   }
 });
 

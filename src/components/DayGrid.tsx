@@ -1,6 +1,6 @@
 // ── Accessible day grid ──────────────────────────────────────────────────────
-// Shared by BOTH calendars (DateField's single-date picker and MonthDatePicker's
-// pick-dates grid). Restores the accessibility the native <input type="date"> gave for
+// Shared by BOTH calendars (CalendarPanel's single-date picker and
+// MonthDatePicker's pick-dates grid). Restores the accessibility the native <input type="date"> gave for
 // free and that our first custom calendars dropped: a real `role="grid"` with roving
 // tabindex (one tab stop, not 42) and arrow / Home / End keyboard navigation.
 //

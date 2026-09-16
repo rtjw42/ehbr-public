@@ -6,7 +6,7 @@
 //
 // This page is the reference for the app's editorial direction: a bespoke airy
 // header (no bordered bar / separator line) and quiet eyebrow section labels.
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { isPast } from "date-fns";
@@ -27,8 +27,7 @@ import { crossfadeTransition } from "@/lib/motion";
 import { deleteEvent, loadEvents } from "@/services/events";
 import { FadeInImg } from "@/components/FadeInImg";
 import { PageShell } from "@/components/PageShell";
-
-const EventForm = lazy(() => import("@/components/EventForm").then((module) => ({ default: module.EventForm })));
+import { LazyEventForm, preloadEventForm } from "@/lib/form-loaders";
 
 const getEventSortTime = (event: EventItem) => new Date(event.end_date ?? event.event_date).getTime();
 
@@ -150,6 +149,9 @@ const Events = () => {
           </div>
           {showAdminControls && (
             <Button
+              // Warm the form chunk on intent, so the sheet never waits on a fetch.
+              onPointerEnter={preloadEventForm}
+              onFocus={preloadEventForm}
               onClick={openNewEvent}
               className="btn-cta min-h-11 w-full shrink-0 justify-center rounded-full px-5 text-base font-semibold shadow-md transition-[background-color,color,border-color,box-shadow] duration-fast hover:shadow-lg sm:w-auto"
             >
@@ -220,9 +222,21 @@ const Events = () => {
 
       <EventInfoDialog event={infoEvent} language={language} onClose={() => setInfoEvent(null)} />
 
-      <Suspense fallback={null}>
-        <EventForm open={formOpen} onClose={() => setFormOpen(false)} editing={editing} onSaved={load} />
-      </Suspense>
+      {/* Lazy + gated, both halves: see `lib/form-loaders.ts`. The gate is the half
+          this page was missing — the form was already lazy, but mounted for everyone. */}
+      {showAdminControls && (
+        <Suspense fallback={null}>
+          <LazyEventForm
+            open={formOpen}
+            onClose={() => setFormOpen(false)}
+            editing={editing}
+            onSaved={() => {
+              setFormOpen(false);
+              load();
+            }}
+          />
+        </Suspense>
+      )}
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
@@ -438,7 +452,7 @@ const EventPosterCard = ({
 
       {isAdmin && (
         <div className="absolute right-2 top-2 flex gap-1.5">
-          <CardAdminButton label={t("common.edit")} onClick={onEdit}>
+          <CardAdminButton label={t("common.edit")} onClick={onEdit} onIntent={preloadEventForm}>
             <Pencil className="h-3.5 w-3.5" />
           </CardAdminButton>
           <CardAdminButton label={t("common.delete")} onClick={onDelete}>
@@ -452,10 +466,23 @@ const EventPosterCard = ({
 
 // Admin action over a poster corner — sits above the card link, suppresses the
 // navigation, and stays tappable on touch (no hover dependency).
-const CardAdminButton = ({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) => (
+const CardAdminButton = ({
+  label,
+  onClick,
+  onIntent,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  // Optional chunk warm-up for buttons that open a lazy form (edit, not delete).
+  onIntent?: () => void;
+  children: React.ReactNode;
+}) => (
   <button
     type="button"
     aria-label={label}
+    onPointerEnter={onIntent}
+    onFocus={onIntent}
     onClick={(e) => {
       e.preventDefault();
       e.stopPropagation();

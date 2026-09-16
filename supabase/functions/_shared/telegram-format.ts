@@ -23,14 +23,14 @@ export type TelegramBookingRow = {
 
 // Weekly is the only pattern ("daily"/"monthly" retired — multi-date pick covers
 // them); submit-booking narrows anything else to "none".
-export type TelegramRecurrence = "none" | "weekly";
+type TelegramRecurrence = "none" | "weekly";
 
 // Escape the five HTML-significant chars so user-supplied text (title / name /
 // info) is inert under parse_mode="HTML". The admin message uses HTML entities
 // for bold labels + a blue "Approve / Reject" link; every interpolated value —
 // including the review URL, whose query string contains `&` — must pass through
 // this, or Telegram will reject the message (or worse, render injected markup).
-export const escapeHtml = (value: string) =>
+const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -130,7 +130,7 @@ const formatSgtDateTime = (iso: string) => {
 };
 
 // "6 Jul 3am → 8 Jul 5am" for a booking that crosses midnight.
-export const formatMultiDaySpan = (startIso: string, endIso: string) =>
+const formatMultiDaySpan = (startIso: string, endIso: string) =>
   `${formatSgtDateTime(startIso)} → ${formatSgtDateTime(endIso)}`;
 
 // ── Dates: "14 Jun" / "14, 16, 19 Jun" / "30 Jun, 2, 4 Jul" ─────────────────
@@ -249,7 +249,7 @@ export const sgtWeekWindow = (now: Date) => {
 // booked before the week starts. Board-only; the website calendar keeps showing
 // the true current week (weekRange in booking-utils). Keep this lead in step with
 // the Sunday rollover cron (Sun 19:00 SGT = Sun 11:00 UTC).
-export const BOARD_WEEK_LEAD_MS = 5 * 60 * 60 * 1000;
+const BOARD_WEEK_LEAD_MS = 5 * 60 * 60 * 1000;
 
 export const sgtBoardWeekWindow = (now: Date) =>
   sgtWeekWindow(new Date(now.getTime() + BOARD_WEEK_LEAD_MS));

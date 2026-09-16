@@ -3,7 +3,7 @@ import { CONTACT_EMAIL } from "@/lib/site-config";
 
 export const PRIVACY_COPY: LegalCopy = {
   title: "Privacy Policy",
-  updated: "Last updated: July 2026",
+  updated: "Last updated: September 2026",
   blocks: [
     {
       heading: "Overview",
@@ -18,12 +18,14 @@ export const PRIVACY_COPY: LegalCopy = {
         { label: "Submission data", text: "the session title and name you provide when submitting a room request" },
         { label: "Usage data", text: "anonymous, aggregated page view statistics collected via Vercel Analytics. No personal information is included, no cookies are set, and no cross-site tracking occurs." },
         { label: "Performance data", text: "anonymous load-speed and responsiveness metrics (Web Vitals) collected via Vercel Speed Insights on every visit, including before consent, to monitor and improve the service. No personal information is included, no cookies are set, and no cross-site tracking occurs." },
+        { label: "Abuse-prevention data", text: "when a public form is submitted, a one-way salted hash of your IP address is recorded so the service can apply rate limits and block automated abuse. Your IP address itself is never stored, the hash cannot be reversed back to it, and these records are deleted automatically after 24 hours. Cloudflare Turnstile, the anti-bot check on every public form, also receives your IP address and browser signals in order to run that check." },
+        { label: "Error diagnostics", text: "if something goes wrong, technical details of the fault — the page, the browser type, and a stack trace — are sent to Sentry so it can be fixed. This runs only after you accept this policy, and is configured not to send personal information." },
       ],
     },
     {
       heading: "How We Use It",
       paragraphs: [
-        "Submission data is used to process and manage band room requests. To coordinate the shared schedule, the details of an approved booking — its session title and the name provided — are sent to a private Telegram group used by band administrators and members. Usage and performance data are used only to understand general traffic patterns, monitor page load speed, and improve the service. None of it is used for marketing or profiling.",
+        "Submission data is used to process and manage band room requests. To coordinate the shared schedule, the details of an approved booking — its session title and the name provided — are sent to a private Telegram group used by band administrators and members. Usage and performance data are used only to understand general traffic patterns, monitor page load speed, and improve the service. Abuse-prevention data is used only to enforce rate limits, and error diagnostics only to fix faults. None of it is used for marketing or profiling.",
       ],
     },
     {
@@ -35,6 +37,9 @@ export const PRIVACY_COPY: LegalCopy = {
         { label: "Supabase", text: "database and authentication infrastructure. Privacy Policy & Terms", href: "https://supabase.com/privacy" },
         { label: "Vercel", text: "hosting and analytics. Privacy Policy & Terms", href: "https://vercel.com/legal/privacy-policy" },
         { label: "Telegram", text: "messaging platform. When a booking is approved, its session title and the name provided are sent to a private Telegram group used by band administrators and members to coordinate the schedule. Privacy Policy", href: "https://telegram.org/privacy" },
+        { label: "Cloudflare", text: "bot protection. Turnstile runs on every public form and receives your IP address and browser signals to distinguish people from automated abuse. Privacy Policy", href: "https://www.cloudflare.com/privacypolicy/" },
+        { label: "Resend", text: "transactional email delivery. Used only for administrator account email — sign-in invitations and password resets — so it handles administrator email addresses only. Submitting a booking sends no email and involves this provider in no way. Privacy Policy", href: "https://resend.com/legal/privacy-policy" },
+        { label: "Sentry", text: "error monitoring, active only after you accept this policy. Receives technical fault details, configured to exclude personal information. Privacy Policy", href: "https://sentry.io/privacy/" },
       ],
     },
     {
@@ -46,7 +51,7 @@ export const PRIVACY_COPY: LegalCopy = {
     {
       heading: "Data Retention",
       paragraphs: [
-        "Submission data is retained for administrative purposes and reviewed periodically. There is no automated deletion schedule. You may request deletion at any time.",
+        "Submission data is retained for administrative purposes and reviewed periodically. There is no automated deletion schedule, and you may request deletion at any time. The one exception is abuse-prevention data, which deletes itself after 24 hours without anyone having to act.",
       ],
     },
     {
@@ -66,7 +71,7 @@ export const PRIVACY_COPY: LegalCopy = {
 
 export const TERMS_COPY: LegalCopy = {
   title: "Terms of Use",
-  updated: "Last updated: July 2026",
+  updated: "Last updated: September 2026",
   blocks: [
     {
       heading: "Overview",
@@ -113,9 +118,9 @@ export const TERMS_COPY: LegalCopy = {
       paragraphs: ["Use of this service is entirely at your own risk."],
     },
     {
-      heading: "Analytics",
+      heading: "Analytics and Monitoring",
       paragraphs: [
-        "By using this application you acknowledge that anonymous, aggregated page view data is collected via Vercel Analytics, and anonymous performance metrics (Web Vitals) are collected via Vercel Speed Insights. No personal information is included in this data.",
+        "By using this application you acknowledge that anonymous, aggregated page view data is collected via Vercel Analytics, anonymous performance metrics (Web Vitals) are collected via Vercel Speed Insights, and error diagnostics are sent to Sentry. No personal information is included in this data. Public form submissions are also rate-limited using a one-way hash of your IP address, and are checked by Cloudflare Turnstile. The Privacy Policy sets out each of these in full.",
       ],
       links: [{ label: "Vercel Privacy Policy", href: "https://vercel.com/legal/privacy-policy" }],
     },

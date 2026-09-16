@@ -282,8 +282,11 @@ const Landing = () => {
                       {t("landing.about.heading")}
                     </h2>
 
-                    {/* Intro + socials directly on the photo — text-shadow carries the
-                        legibility instead of a panel. Socials mirror the site footer. */}
+                    {/* Intro directly on the photo — text-shadow carries the legibility
+                        instead of a panel. The socials cannot lean on a shadow (a 16px
+                        line-icon vanishes on a bright patch of photo), so each sits in a
+                        frosted chip: the same white/20 disc the Other-pages tiles use,
+                        sized to the 44px touch target. */}
                     <div className="max-w-sm [text-shadow:0_1px_12px_rgba(0,0,0,0.65)]">
                       <p className="mb-0 text-sm font-semibold leading-relaxed text-white/85 sm:text-base">
                         {t("landing.about.description")}
@@ -292,10 +295,11 @@ const Landing = () => {
                         {t("landing.about.contact")}
                       </p>
                       {socialLinks.length > 0 && (
-                        <div className="mt-2 flex items-center gap-1 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">
+                        <div className="mt-3 flex flex-wrap items-center gap-2.5">
                           <ContactLinks
                             fields={socialLinks}
-                            iconClassName="inline-flex h-6 w-6 items-center justify-center text-white transition-opacity duration-base hover:opacity-60"
+                            iconClassName="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/30 transition-[background-color,transform] duration-base hover:bg-white/35 active:scale-[0.97] active:duration-100"
+                            glyphClassName="h-5 w-5"
                           />
                         </div>
                       )}

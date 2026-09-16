@@ -36,11 +36,11 @@ export const navPanelTransition = {
   ease: motionEase.enter,
 } as const;
 
-// The ONE height-glide timing (Phase M2.5 — the "resize style", restored as a
-// first-class citizen after the owner's on-device verdict). Every height glide
-// in the app runs through <Resize> (ui/resize.tsx) on this token, and the
-// dialog scroll animator (animate-scroll.ts) tweens on the SAME duration +
-// curve, so a centring pan and a panel glide can never desync.
+// The ONE height-glide timing. Its sole consumer is <Resize> (ui/resize.tsx),
+// which DayDetailDialog keeps for its view swaps — the last height animation in
+// the app, by design (DESIGN_SYSTEM → Motion). Everything else that once shared
+// this token is gone: the centring pan and `animate-scroll.ts` with the FLIP
+// picker family, `Collapse` on 2026-09-15.
 //
 // Symmetric in-out curve (NOT the ease-out enter): a box morphing its height
 // carries the eye across a distance and reads smoother accelerating from rest
@@ -48,25 +48,9 @@ export const navPanelTransition = {
 //
 // LPM note, honestly: a height glide is per-frame main-thread work, so iOS Low
 // Power caps it to ~30fps no matter who drives it (this is CSS-driven — React
-// only sets endpoint values, rule #1). The pan is rAF-driven and capped the
-// same way, so the pair degrades TOGETHER and stays locked — coherence over
-// per-path smoothness. Full power is the design target (owner call).
+// only sets endpoint values, rule #1). A rare moment, not every tap — that is
+// the whole reason it survives.
 export const resizeTransition = {
-  duration: 0.44,
-  ease: [0.4, 0, 0.2, 1],
-} as const;
-
-// The ONE in-form geometry timing (Phase N). Every FLIP — picker open/close,
-// panel toggles, A↔B morphs, the scroll absorption that rides along with them —
-// runs on this single token, because M2.5's core diagnosis was that "jumps" were
-// 2–3 animations per interaction on DIFFERENT clocks. One token, one clock, one
-// gesture, by construction rather than by keeping numbers in sync.
-//
-// Deliberately the same duration + symmetric in-out curve as `resizeTransition`,
-// so the feel is unchanged from the height-glide it replaces — only the property
-// changes (transform, not height), which is what makes it frame-rate independent
-// and therefore smooth in iOS Low Power.
-export const flipTransition = {
   duration: 0.44,
   ease: [0.4, 0, 0.2, 1],
 } as const;

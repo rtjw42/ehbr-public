@@ -21,7 +21,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
@@ -42,6 +42,7 @@ import { sanitizeDisplayText, stripHtmlText } from "@/lib/sanitize";
 import { containsLink } from "@/lib/text-guard";
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
+import { useInvalidFieldFocus } from "@/hooks/useInvalidFieldFocus";
 import { formatClockRange, formatClockTime, formatLocalizedDate, getDateLocale } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import {
@@ -60,9 +61,6 @@ import { getRememberedBookerName, rememberBookerName } from "@/lib/booking-name"
 // form's initial render + LCP light (the whole form is already behind LazyBookingForm).
 const MonthDatePicker = lazy(() => import("@/components/MonthDatePicker"));
 
-// Cap on hand-picked dates (UI).
-const MAX_PICK_DATES = 10;
-
 // ── Server limits, mirrored ──────────────────────────────────────────────────
 // These MUST stay in step with submit_booking_request (migration 20260831120000).
 // Every picker is bounded by them so the form can never offer a date the submit
@@ -74,6 +72,9 @@ const MAX_HORIZON_MONTHS = 18;
 const MAX_PUBLIC_SESSIONS = 60;
 const MAX_ADMIN_SESSIONS = 366;
 const MAX_SESSION_DAYS = 7;
+// Hand-picked dates are one session each, so the pick cap IS the session cap —
+// it was 10 for a while, which turned away requests the server would have taken.
+const MAX_PICK_DATES = MAX_PUBLIC_SESSIONS;
 // Title and name (DB constraint + both RPCs agree on 100).
 const TEXT_FIELD_MAX_CHARS = 100;
 // Counters appear only once a field is within reach of its cap: a 20-character
@@ -108,6 +109,14 @@ interface Props {
   onSubmitted: (result: BookingFormSubmitResult) => void;
   editing?: Booking | null;
   adminMode?: boolean;
+  /**
+   * The one form that takes this as a prop rather than reading `useAdmin()` like
+   * EventForm, BacklineForm, ContactsForm and MediaSetlistForm do. Deliberate:
+   * this form is PUBLIC, so a live admin session is not something it always has —
+   * the prop pairs with `adminMode`, and both come from the host that knows which
+   * mode it opened. It stays optional for the anonymous case, which is why the
+   * admin paths below carry a missing-prop guard the others do not need.
+   */
   ensureAdminSession?: () => Promise<boolean>;
 }
 
@@ -219,7 +228,6 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
     swapFadeReadyRef.current = open;
   }, [open]);
   const swapFadeInitial = () => (swapFadeReadyRef.current ? { opacity: 0 } : false);
-  const fieldRefs = useRef<Partial<Record<BookingFormErrorKey, HTMLElement | null>>>({});
   // Latest approved bookings without widening the open-effect deps — the effect seeds
   // the next-free slot from a snapshot at open; it must NOT re-run (and wipe the
   // user's draft) every time a realtime booking update arrives.
@@ -230,36 +238,14 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
   const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
   const canCancelVerification = verificationState !== "verified" && verificationState !== "submitting" && verificationState !== "success";
 
-  const setFieldRef = useCallback((key: BookingFormErrorKey) => (node: HTMLElement | null) => {
-    fieldRefs.current[key] = node;
-  }, []);
-
-  // Pan to the first invalid field and focus it. The old FLIP pan is gone with the
-  // inline panels — nothing else animates now, so a native smooth scroll on the body
-  // is the whole gesture (browser-driven, no competing writer).
-  const focusFirstInvalidField = useCallback((validationErrors: BookingFormErrors) => {
-    // Visual (top-down) order — Days sits above the time fields, Info is last — so
-    // "first invalid" is the VISUALLY topmost error.
-    const fieldOrder: BookingFormErrorKey[] = ["title", "name", "date", "recurrenceEnd", "startTime", "endDate", "endTime", "info"];
-    const firstInvalidKey = fieldOrder.find((key) => validationErrors[key]);
-    if (!firstInvalidKey) return;
-    const target = fieldRefs.current[firstInvalidKey];
-    const container = formScrollRef.current;
-    if (!target || !container) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const desiredTop = Math.max(0, container.scrollTop + targetRect.top - containerRect.top - 24);
-    container.scrollTo({ top: desiredTop, behavior: "smooth" });
-
-    window.setTimeout(() => {
-      try {
-        target.focus({ preventScroll: true });
-      } catch {
-        target.focus();
-      }
-    }, 160);
-  }, []);
+  // Scroll-to-and-focus on a refused save now lives in the shared hook — every form
+  // does this, not just this one. Visual (top-down) order, so "first invalid" is the
+  // topmost error on screen: Days sits above the time fields, Info is last.
+  const { setFieldRef, focusFirstInvalidField } = useInvalidFieldFocus<BookingFormErrorKey>();
+  const FIELD_ORDER = useMemo(
+    () => ["title", "name", "date", "recurrenceEnd", "startTime", "endDate", "endTime", "info"] as const,
+    [],
+  );
 
   // Tapping the header strip pans to the full banner — same maths as
   // focusFirstInvalidField, so there is one scroll behaviour in this form.
@@ -742,7 +728,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
     if (submitting) return;
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
-      focusFirstInvalidField(validationErrors);
+      focusFirstInvalidField(validationErrors, FIELD_ORDER);
       return;
     }
     if (conflict) {
@@ -1047,15 +1033,12 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
       // One label per control — no eyebrow group headers. A third text tier
       // competing with the field labels is what made this read busy.
       <div className="space-y-5">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="title">{t("bookingForm.title")}</Label>
-            {title.length >= COUNTER_VISIBLE_FROM && (
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {t("common.charCounter", { count: title.length, max: TEXT_FIELD_MAX_CHARS })}
-              </span>
-            )}
-          </div>
+        <FormField
+          id="title"
+          label={t("bookingForm.title")}
+          labelTrailing={title.length >= COUNTER_VISIBLE_FROM ? t("common.charCounter", { count: title.length, max: TEXT_FIELD_MAX_CHARS }) : undefined}
+          error={errors.title}
+        >
           <Input
             id="title"
             ref={setFieldRef("title")}
@@ -1069,18 +1052,14 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
             maxLength={TEXT_FIELD_MAX_CHARS}
             aria-invalid={!!errors.title}
           />
-          {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="name">{t("bookingForm.name")}</Label>
-            {name.length >= COUNTER_VISIBLE_FROM && (
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {t("common.charCounter", { count: name.length, max: TEXT_FIELD_MAX_CHARS })}
-              </span>
-            )}
-          </div>
+        <FormField
+          id="name"
+          label={t("bookingForm.name")}
+          labelTrailing={name.length >= COUNTER_VISIBLE_FROM ? t("common.charCounter", { count: name.length, max: TEXT_FIELD_MAX_CHARS }) : undefined}
+          error={errors.name}
+        >
           <Input
             id="name"
             ref={setFieldRef("name")}
@@ -1095,8 +1074,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
             maxLength={TEXT_FIELD_MAX_CHARS}
             aria-invalid={!!errors.name}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-        </div>
+        </FormField>
 
         {/* ── Type ──
             ONE label for the single/weekly/multiple choice. This used to be a
@@ -1127,8 +1105,11 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
           className="space-y-5"
         >
           {datesMode === "single" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="date">{t("bookingForm.date")}</Label>
+            <FormField
+              id="date"
+              label={t("bookingForm.date")}
+              error={errors.date}
+            >
               <div className="relative" ref={dateAnchor}>
                 <FieldRow
                   id="date"
@@ -1166,8 +1147,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                   />
                 </PickerDropdown>
               </div>
-              {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
-            </div>
+            </FormField>
           )}
 
           {datesMode === "repeat" && (
@@ -1203,41 +1183,46 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
               </div>
 
               <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="rend">{t("bookingForm.repeatUntil")}</Label>
-                <div className="relative" ref={repeatUntilAnchor}>
-                  <FieldRow
-                    id="rend"
-                    ref={setFieldRef("recurrenceEnd")}
-                    ariaLabel={t("bookingForm.repeatUntil")}
-                    icon={<CalendarIcon className="h-4 w-4" aria-hidden />}
-                    value={dateLabel(recurrenceEnd)}
-                    placeholder={!recurrenceEnd}
-                    invalid={!!errors.recurrenceEnd}
-                    onClick={() => togglePicker("repeatUntil")}
-                  />
-                  <PickerDropdown
-                    open={picker === "repeatUntil"}
-                    onClose={closePicker}
-                    anchorRef={repeatUntilAnchor}
-                    ariaLabel={t("bookingForm.repeatUntil")}
-                  >
-                    <CalendarPanel
-                      compact
-                      value={recurrenceEnd}
-                      // The series can't end before its first occurrence (`date` is the
-                      // derived weekly anchor, always today or later) — nor run past
-                      // the session cap / horizon, whichever comes first.
-                      min={date}
-                      max={maxRepeatUntilDay}
-                      headerTrailing={gridDone}
-                      onChange={(v) => {
-                        setRecurrenceEnd(v);
-                        setErrors((current) => ({ ...current, recurrenceEnd: undefined }));
-                      }}
+                <FormField
+                  id="rend"
+                  label={t("bookingForm.repeatUntil")}
+                  error={errors.recurrenceEnd}
+                  className="min-w-0"
+                >
+                  <div className="relative" ref={repeatUntilAnchor}>
+                    <FieldRow
+                      id="rend"
+                      ref={setFieldRef("recurrenceEnd")}
+                      ariaLabel={t("bookingForm.repeatUntil")}
+                      icon={<CalendarIcon className="h-4 w-4" aria-hidden />}
+                      value={dateLabel(recurrenceEnd)}
+                      placeholder={!recurrenceEnd}
+                      invalid={!!errors.recurrenceEnd}
+                      onClick={() => togglePicker("repeatUntil")}
                     />
-                  </PickerDropdown>
-                </div>
-                {errors.recurrenceEnd && <p className="text-xs text-destructive">{errors.recurrenceEnd}</p>}
+                    <PickerDropdown
+                      open={picker === "repeatUntil"}
+                      onClose={closePicker}
+                      anchorRef={repeatUntilAnchor}
+                      ariaLabel={t("bookingForm.repeatUntil")}
+                    >
+                      <CalendarPanel
+                        compact
+                        value={recurrenceEnd}
+                        // The series can't end before its first occurrence (`date` is the
+                        // derived weekly anchor, always today or later) — nor run past
+                        // the session cap / horizon, whichever comes first.
+                        min={date}
+                        max={maxRepeatUntilDay}
+                        headerTrailing={gridDone}
+                        onChange={(v) => {
+                          setRecurrenceEnd(v);
+                          setErrors((current) => ({ ...current, recurrenceEnd: undefined }));
+                        }}
+                      />
+                    </PickerDropdown>
+                  </div>
+                </FormField>
                 <p className="text-xs text-muted-foreground">{t("bookingForm.weeklyRepeatHint")}</p>
                 {/* Named up front, because the Repeat-until calendar simply stops at
                     the cap — an unexplained wall is worse than a stated limit. */}
@@ -1249,8 +1234,11 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
           )}
 
           {datesMode === "pick" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="pick-dates">{t("bookingForm.datesSelected")}</Label>
+            <FormField
+              id="pick-dates"
+              label={t("bookingForm.datesSelected")}
+              error={errors.date}
+            >
               <div className="relative" ref={pickDatesAnchor}>
                 <FieldRow
                   id="pick-dates"
@@ -1322,14 +1310,16 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                   {t("bookingForm.datesAtCap", { max: MAX_PICK_DATES })}
                 </p>
               )}
-              {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
-            </div>
+            </FormField>
           )}
         </motion.div>
 
         {/* ── Start time ── */}
-        <div className="space-y-1.5">
-          <Label htmlFor="start">{t("bookingForm.startTime")}</Label>
+        <FormField
+          id="start"
+          label={t("bookingForm.startTime")}
+          error={errors.startTime}
+        >
           <div className="relative" ref={startAnchor}>
             <FieldRow
               id="start"
@@ -1365,8 +1355,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
               {t("bookingForm.autoSlotHint")}
             </p>
           )}
-          {errors.startTime && <p className="text-xs text-destructive">{errors.startTime}</p>}
-        </div>
+        </FormField>
 
         {/* ── Ends ── a two-way segmented control naming both options, unboxed. */}
         <div className="space-y-2">
@@ -1407,12 +1396,24 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                     setErrors((current) => ({ ...current, endTime: undefined }));
                   }}
                 />
+                {/* Not a FormField: the duration is a Slider with a value readout,
+                    not a labelled control with an id, so there is no field id for
+                    FormField to derive a label and error id from. The message still
+                    sits directly under the control it belongs to. A refused save in
+                    THIS mode does not scroll — `setFieldRef("endTime")` is on the
+                    end-time FieldRow, which is unmounted here; attaching it in both
+                    branches would race, since the crossfade can mount one before the
+                    other unmounts and the later ref(null) would win. */}
                 {errors.endTime && <p className="text-xs text-destructive">{errors.endTime}</p>}
               </>
             ) : (
               <div className="space-y-3">
-                <div className="min-w-0 space-y-1.5">
-                  <Label htmlFor="endDate">{t("bookingForm.endDate")}</Label>
+                <FormField
+                  id="endDate"
+                  label={t("bookingForm.endDate")}
+                  error={errors.endDate}
+                  className="min-w-0"
+                >
                   <div className="relative" ref={endDateAnchor}>
                     <FieldRow
                       id="endDate"
@@ -1447,10 +1448,13 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                       />
                     </PickerDropdown>
                   </div>
-                  {errors.endDate && <p className="text-xs text-destructive">{errors.endDate}</p>}
-                </div>
-                <div className="min-w-0 space-y-1.5">
-                  <Label htmlFor="end">{t("bookingForm.endTime")}</Label>
+                </FormField>
+                <FormField
+                  id="end"
+                  label={t("bookingForm.endTime")}
+                  error={errors.endTime}
+                  className="min-w-0"
+                >
                   <div className="relative" ref={endTimeAnchor}>
                     <FieldRow
                       id="end"
@@ -1479,21 +1483,19 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
                       {wheelDone}
                     </PickerDropdown>
                   </div>
-                  {errors.endTime && <p className="text-xs text-destructive">{errors.endTime}</p>}
-                </div>
+                </FormField>
               </div>
             )}
           </motion.div>
         </div>
 
         {/* ── Notes ── */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="booking-info">{t("bookingForm.info")}</Label>
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-              {t("common.charCounter", { count: info.length, max: BOOKING_INFO_MAX_CHARS })}
-            </span>
-          </div>
+        <FormField
+          id="booking-info"
+          label={t("bookingForm.info")}
+          labelTrailing={t("common.charCounter", { count: info.length, max: BOOKING_INFO_MAX_CHARS })}
+          error={errors.info}
+        >
           <Textarea
             id="booking-info"
             ref={setFieldRef("info")}
@@ -1506,10 +1508,8 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
             maxLength={BOOKING_INFO_MAX_CHARS}
             placeholder={t("bookingForm.infoPlaceholder")}
             aria-invalid={!!errors.info}
-            aria-describedby={errors.info ? "booking-info-error" : undefined}
           />
-          {errors.info && <p id="booking-info-error" className="text-xs text-destructive">{errors.info}</p>}
-        </div>
+        </FormField>
 
         {/* Conflict warning sits below every scheduling input (days + time — its
             cause) and stays visible the whole time the conflict exists — the submit

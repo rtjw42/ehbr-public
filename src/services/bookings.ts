@@ -172,7 +172,8 @@ export const normalizeBookingError = (error: unknown, fallback: string) => {
   // practice they only surface for a clock-skewed device or a direct API call —
   // but a generic "could not submit" leaves a real user with nothing to act on.
   // These exact strings are ours (see the submit_booking_request migration), and the
-  // Edge Function's cleanErrorMessage already gate-keeps what reaches us.
+  // Edge Function only forwards them because the RPC raised them (SQLSTATE P0001 —
+  // `_shared/public-error.ts`), never a Postgres internal.
   if (/characters or fewer|within the next|shorter than \d+ days|between 1 and \d+ sessions|start and end time/i.test(message)) {
     return message;
   }

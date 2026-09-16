@@ -23,8 +23,7 @@ import {
 import { EventItem, eventsForDay } from "@/lib/events";
 import { DayBox } from "@/components/DayBox";
 import { DayDetailDialog } from "@/components/DayDetailDialog";
-import { LazyBookingForm } from "@/components/LazyBookingForm";
-import { preloadBookingForm } from "@/lib/booking-form-loader";
+import { LazyBookingForm, preloadBookingForm } from "@/lib/form-loaders";
 
 import { calendarFilename, createIcsCalendar, downloadIcs } from "@/lib/ics";
 import { useAdmin } from "@/hooks/useAdmin";

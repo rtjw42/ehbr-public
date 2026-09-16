@@ -29,4 +29,12 @@ export default tseslint.config(
       }],
     },
   },
+  {
+    // shadcn-style wrappers re-export Radix primitives and cva variant helpers
+    // next to their components. Fast Refresh falls back to a full reload for
+    // those files, which is fine for a wrapper directory; the rule stays on
+    // everywhere else, where it catches real HMR breakage.
+    files: ["src/components/ui/**/*.tsx"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
 );

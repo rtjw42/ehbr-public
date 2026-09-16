@@ -3,7 +3,7 @@ import { addDays, format, startOfMonth, startOfWeek } from "date-fns";
 import type { getDateLocale } from "@/lib/date";
 
 // ── Month grid ───────────────────────────────────────────────────────────────
-// The single source for BOTH calendars (DateField's single-date picker and
+// The single source for BOTH calendars (CalendarPanel's single-date picker and
 // MonthDatePicker's pick-dates grid): a 6-week day list and the weekday header
 // labels. They used to compute this independently, which meant the Sunday-first
 // switch had to be made twice — exactly the drift this prevents.

@@ -1,3 +1,5 @@
+import { PublicError, VERIFICATION_FAILED } from "./public-error.ts";
+
 // Deployment config, not source: each deployment sets its own origins so no
 // domain is hardcoded here. `ALLOWED_ORIGINS` is a comma-separated list; it falls
 // back to `SITE_URL` (already required for absolute links) so a deployment that
@@ -19,16 +21,16 @@ if (ALLOWED_ORIGINS.size === 0) {
   console.error("ALLOWED_ORIGINS and SITE_URL are both unset — every origin will be rejected.");
 }
 
-export type TurnstileResponse = {
+type TurnstileResponse = {
   success: boolean;
   "error-codes"?: string[];
 };
 
-export const getOrigin = (req: Request) => req.headers.get("Origin") ?? "";
+const getOrigin = (req: Request) => req.headers.get("Origin") ?? "";
 
-export const isAllowedOrigin = (origin: string) => ALLOWED_ORIGINS.has(origin);
+const isAllowedOrigin = (origin: string) => ALLOWED_ORIGINS.has(origin);
 
-export const corsHeadersFor = (origin: string) => ({
+const corsHeadersFor = (origin: string) => ({
   "Access-Control-Allow-Origin": origin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -61,15 +63,15 @@ export const json = (origin: string, body: unknown, status = 200) =>
 export const assertRequestSize = (req: Request, maxBytes: number, requireLength = false) => {
   const rawLength = req.headers.get("Content-Length");
   if (!rawLength) {
-    if (requireLength) throw new Error("Request size is required");
+    if (requireLength) throw new PublicError("Request size is required", 400);
     return;
   }
   const byteLength = Number(rawLength);
   if (!Number.isFinite(byteLength) || byteLength < 0) {
-    throw new Error("Invalid request size");
+    throw new PublicError("Invalid request size", 400);
   }
   if (byteLength > maxBytes) {
-    throw new Error("Request body is too large");
+    throw new PublicError("Request body is too large", 413);
   }
 };
 
@@ -79,12 +81,12 @@ export const readJsonBody = async (req: Request, maxBytes: number) => {
   assertRequestSize(req, maxBytes, true);
   const rawBody = await req.text();
   if (new TextEncoder().encode(rawBody).byteLength > maxBytes) {
-    throw new Error("Request body is too large");
+    throw new PublicError("Request body is too large", 413);
   }
   try {
     return JSON.parse(rawBody) as Record<string, unknown>;
   } catch {
-    throw new Error("Invalid JSON body");
+    throw new PublicError("Invalid JSON body", 400);
   }
 };
 
@@ -175,32 +177,15 @@ export const verifyTurnstile = async (
     // Cloudflare-side/network failure — log so a real outage is distinguishable from a
     // bad token, not silently collapsed into the same generic error.
     console.warn("[turnstile] siteverify request failed", JSON.stringify({ status: response.status, ...context }));
-    throw new Error("Could not verify anti-bot challenge");
+    throw new PublicError(VERIFICATION_FAILED, 403);
   }
   const result = (await response.json()) as TurnstileResponse;
   if (!result.success) {
     // error-codes separate duplicate/expired from invalid/forged; ipHash shows whether
     // failures cluster on one device.
     console.warn("[turnstile] verification failed", JSON.stringify({ errorCodes: result["error-codes"] ?? [], ...context }));
-    throw new Error("Verification failed or expired. Please complete the challenge again.");
+    throw new PublicError(VERIFICATION_FAILED, 403);
   }
-};
-
-export const cleanErrorMessage = (error: unknown, fallback: string) => {
-  const message = error instanceof Error ? error.message : fallback;
-  if (/verification|turnstile|challenge/i.test(message)) return "Verification failed or expired. Please complete the challenge again.";
-  if (/required|invalid|must|array|between|after|100 characters|366 sessions|too large|request size|json body/i.test(message)) return message;
-  if (/conflict|overlap|exclude constraint/i.test(message)) return "That time is no longer available.";
-  return fallback;
-};
-
-export const statusForMessage = (message: string) => {
-  if (/too many|rate limit|try again later/i.test(message)) return 429;
-  if (/verification|turnstile|challenge/i.test(message)) return 403;
-  if (/conflict|overlap|available/i.test(message)) return 409;
-  if (/too large/i.test(message)) return 413;
-  if (/required|invalid|must|array|between|after|100 characters|366 sessions|request size|json body/i.test(message)) return 400;
-  return 500;
 };
 
 // ── Warmup ping ──────────────────────────────────────────────────────────────

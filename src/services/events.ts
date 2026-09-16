@@ -42,7 +42,7 @@ type EventPayload = {
   poster_url: string | null;
   // Only present when the caller actually edits them. EventForm owns the basics and
   // leaves these out, so its updates must NOT touch the jsonb columns — those are
-  // owned by updateEventMedia (the MediaSetlistEditor). Including them here with a
+  // owned by updateEventMedia (MediaSetlistForm). Including them here with a
   // default would wipe an event's media/setlist on every basics edit.
   media?: MediaItem[];
   setlist?: SetlistEntry[];
@@ -75,8 +75,19 @@ const messageFromUnknown = (error: unknown) => {
   return "";
 };
 
+// Messages the upload-admin-file Edge Function returns when it refuses the request
+// outright — before it ever looks at the file. They are our own fixed strings and
+// carry no internals, so they pass through verbatim. Everything unrecognised still
+// collapses to the fallback: a raw Postgres error must never reach the user.
+//
+// Without this, a rejected origin and a missing admin role both surfaced as
+// "Could not upload poster.", which is indistinguishable from a bad file and left
+// the actual cause (usually a dev origin missing from ALLOWED_ORIGINS) invisible.
+const EDGE_ACCESS_ERROR = /origin not allowed|admin (session|access) is required|method not allowed|could not reach the upload service/i;
+
 export const normalizeEventError = (error: unknown, fallback: string) => {
   const message = messageFromUnknown(error);
+  if (EDGE_ACCESS_ERROR.test(message)) return message;
   if (/5mb|too large|file size/i.test(message)) return "Poster image must be 5MB or smaller.";
   if (/jpeg|jpg|mime|content type|image/i.test(message)) return "Poster image must be a JPEG image.";
   return fallback;
@@ -86,15 +97,50 @@ const throwEventError = (error: unknown, fallback: string): never => {
   throw new Error(normalizeEventError(error, fallback));
 };
 
+// True when the request never completed at the HTTP level — no response the browser
+// would let us read. The common cause in practice is the Edge Function's CORS
+// refusal: `forbiddenCors()` answers 403 WITHOUT an Access-Control-Allow-Origin
+// header, so the browser blocks the body outright and supabase-js reports a fetch
+// failure with no `context`. A genuine offline/DNS failure looks the same from here.
+const isUnreachable = (error: unknown) =>
+  typeof error === "object" && error !== null
+  && (error as { name?: unknown }).name === "FunctionsFetchError"
+  && !(error as { context?: Response }).context;
+
 const readFunctionErrorMessage = async (error: unknown, fallback: string) => {
+  if (isUnreachable(error)) {
+    if (import.meta.env.DEV) {
+      // Dev-only, and states the two causes worth checking first. Nothing secret:
+      // the origin is already visible to anyone with the page open.
+      console.error(
+        "[upload] The Edge Function could not be reached. If the network tab shows a blocked 403, "
+        + `this origin (${window.location.origin}) is missing from the function's ALLOWED_ORIGINS.`,
+      );
+    }
+    return "Could not reach the upload service.";
+  }
   const context = (error as { context?: Response }).context;
   if (context) {
+    let serverMessage: string | null = null;
     try {
       const body = await context.clone().json() as { error?: unknown };
-      if (typeof body.error === "string" && body.error.trim()) return body.error;
+      if (typeof body.error === "string" && body.error.trim()) serverMessage = body.error;
     } catch {
       // Keep the safe fallback below.
     }
+    if (import.meta.env.DEV) {
+      // The STATUS is what separates the causes, and it is the one thing the user
+      // copy deliberately hides. 400 = the file was rejected; 401/403 = session,
+      // role or origin; 500 = the function itself failed — missing env or a storage
+      // error — and its reason is in the Edge Function logs, never in this response.
+      console.error(
+        `[upload] upload-admin-file responded ${context.status}: ${serverMessage ?? "(no message in body)"}`,
+        context.status >= 500
+          ? "→ server-side failure; check the upload-admin-file logs for the real error."
+          : "",
+      );
+    }
+    if (serverMessage) return serverMessage;
   }
   return messageFromUnknown(error) || fallback;
 };

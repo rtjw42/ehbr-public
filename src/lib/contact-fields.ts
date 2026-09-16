@@ -3,6 +3,12 @@ import type { ContactFieldType } from "@/services/contacts";
 
 // Single source for the contact-link presentation shared by the site footer and
 // anywhere that mirrors it (e.g. the landing About card), so the two never drift.
+// The label the footer's own contact row is stored under. Shared by SiteFooter (to
+// find that row) and the lazy ContactsForm (to write it) — it lives here
+// rather than in either, because a constant exported from the dialog would make the
+// footer import it statically and pull the admin form back into the main bundle.
+export const FOOTER_CONTACT_LABEL = "Footer links";
+
 export const FOOTER_CONTACT_TYPES: ContactFieldType[] = ["instagram", "telegram", "email", "phone", "whatsapp"];
 export const linkedContactTypes = new Set<ContactFieldType>(FOOTER_CONTACT_TYPES);
 

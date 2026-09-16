@@ -1,59 +1,51 @@
 // ── Backline (/backline) ─────────────────────────────────────────────────────
 // Public Gear & Rates page. Each section renders inline text or a downloadable
-// PDF/image pulled from the backline service; admins can edit inline. Realtime on
-// backline_content keeps it live.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// PDF/image pulled from the backline service. Realtime on backline_content keeps it
+// live.
+//
+// This page is PUBLIC, so it holds only what a visitor needs: the cards and their
+// skeleton. The admin editor is `components/BacklineForm.tsx` — lazy-imported and
+// gated on `showAdminControls`, so an anonymous visitor never downloads it.
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Download, ExternalLink, Loader2, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, ExternalLink, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { useAdmin } from "@/hooks/useAdmin";
 import { crossfadeTransition, overlayExitTransition } from "@/lib/motion";
 import { FadeInImg } from "@/components/FadeInImg";
-import { assertBacklineFile, fileValidationTranslationKey } from "@/lib/file-validation";
-import { sanitizeDisplayText, stripHtmlText } from "@/lib/sanitize";
+import { backlineSectionLabel } from "@/lib/backline-labels";
+import { sanitizeDisplayText } from "@/lib/sanitize";
 
 import {
   DEFAULT_BACKLINE_CONTENT,
   downloadBacklineFile as downloadBacklineBlob,
   downloadFileNameForContent,
   loadBacklineContent,
-  saveBacklineContent,
-  uploadBacklineFile,
   type BacklineContent,
-  type BacklineContentType,
-  type BacklineFileMetadata,
   type SectionKey,
 } from "@/services/backline";
 import { BacklineSkeleton } from "@/components/PageSkeletons";
 import { useI18n } from "@/hooks/useI18n";
 import { PageShell } from "@/components/PageShell";
 import { PageHeaderBar } from "@/components/PageHeaderBar";
-import type { TranslationKey } from "@/lib/i18n";
-
-type TFunction = (key: TranslationKey, vars?: Record<string, string | number>) => string;
-const BACKLINE_TITLE_MAX_CHARS = 255;
-const BACKLINE_BODY_MAX_CHARS = 5000;
-
-const backlineSectionLabel = (sectionKey: string, t: TFunction) => {
-  if (sectionKey === "gear") return t("backline.section.gear");
-  if (sectionKey === "rates") return t("backline.section.rates");
-  return sectionKey;
-};
+import type { Translate } from "@/lib/i18n";
+// Admin-only, so it is BOTH lazy and gated below: `lazy()` alone would still fetch
+// the chunk the moment the component mounted, and this page is public.
+import { LazyBacklineForm, preloadBacklineForm } from "@/lib/form-loaders";
 
 const Backline = () => {
   const [content, setContent] = useState<Record<SectionKey, BacklineContent>>(DEFAULT_BACKLINE_CONTENT);
   const [previewUrls, setPreviewUrls] = useState<Record<SectionKey, string>>({ gear: "", rates: "" });
   const [previewFailures, setPreviewFailures] = useState<Record<SectionKey, boolean>>({ gear: false, rates: false });
-  const { showAdminControls, ensureAdminSession } = useAdmin();
+  const { showAdminControls } = useAdmin();
+  // Two states, not one: `editing` says WHICH section, `formOpen` says whether the
+  // sheet is up. Folding them into one meant the form lost its section the instant
+  // it closed, and it had to hold a copy in a ref to render the way out.
   const [editing, setEditing] = useState<BacklineContent | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [previewsReady, setPreviewsReady] = useState(false);
   const previewUrlsRef = useRef<Record<SectionKey, string>>({ gear: "", rates: "" });
@@ -171,7 +163,10 @@ const Backline = () => {
                       previewFailed={previewFailures[item.section_key as SectionKey]}
                       previewsReady={previewsReady}
                       isAdmin={showAdminControls}
-                      onEdit={() => setEditing(item)}
+                      onEdit={() => {
+                        setEditing(item);
+                        setFormOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -181,15 +176,23 @@ const Backline = () => {
         </section>
       </main>
 
-      <BacklineContentDialog
-        editing={editing}
-        ensureAdminSession={ensureAdminSession}
-        onClose={() => setEditing(null)}
-        onSaved={() => {
-          setEditing(null);
-          loadContent();
-        }}
-      />
+      {showAdminControls && (
+        <Suspense fallback={null}>
+          <LazyBacklineForm
+            open={formOpen}
+            section={editing}
+            // The page already holds a decoded object URL for every section's file,
+            // so the form can preview an existing image without a second download.
+            previewUrl={editing ? previewUrls[editing.section_key as SectionKey] : ""}
+            onClose={() => setFormOpen(false)}
+            onSaved={() => {
+              setFormOpen(false);
+              loadContent();
+            }}
+          />
+        </Suspense>
+      )}
+
     </PageShell>
   );
 };
@@ -250,6 +253,8 @@ const BacklineContentCard = ({
             <Button
               size="icon"
               variant="ghost"
+              onPointerEnter={preloadBacklineForm}
+              onFocus={preloadBacklineForm}
               onClick={onEdit}
               aria-label={t("backline.editAria", { title: sanitizeDisplayText(item.title) })}
               className="rounded-full"
@@ -337,7 +342,7 @@ const BacklinePreviewPlaceholder = () => (
   </div>
 );
 
-const downloadBacklineFile = async (item: BacklineContent, t: TFunction) => {
+const downloadBacklineFile = async (item: BacklineContent, t: Translate) => {
   if (!item.file_path) return;
   try {
     const data = await downloadBacklineBlob(item.file_path);
@@ -354,196 +359,6 @@ const downloadBacklineFile = async (item: BacklineContent, t: TFunction) => {
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, t("backline.downloadFailed")));
   }
-};
-
-const BacklineContentDialog = ({
-  editing,
-  ensureAdminSession,
-  onClose,
-  onSaved,
-}: {
-  editing: BacklineContent | null;
-  ensureAdminSession: () => Promise<boolean>;
-  onClose: () => void;
-  onSaved: () => void;
-}) => {
-  const [title, setTitle] = useState("");
-  const [contentType, setContentType] = useState<BacklineContentType>("text");
-  const [bodyText, setBodyText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; bodyText?: string; file?: string }>({});
-  const { t } = useI18n();
-
-  useEffect(() => {
-    if (!editing) return;
-    setTitle(editing.title);
-    setContentType(editing.content_type as BacklineContentType);
-    setBodyText(editing.body_text ?? "");
-    setFile(null);
-    setErrors({});
-  }, [editing]);
-
-  const save = async () => {
-    if (saving) return;
-    if (!editing) return;
-    if (!(await ensureAdminSession())) return;
-    const cleanTitle = stripHtmlText(title);
-    const cleanBodyText = stripHtmlText(bodyText);
-    const nextErrors = {
-      title: cleanTitle ? undefined : t("validation.titleRequired"),
-      bodyText: contentType === "text" && !cleanBodyText ? t("validation.textContentRequired") : undefined,
-      file: contentType !== "text" && !file && !editing.file_path ? t("validation.fileRequired") : undefined,
-    };
-    setErrors(nextErrors);
-    if (nextErrors.title || nextErrors.bodyText || nextErrors.file) {
-      return;
-    }
-
-    setSaving(true);
-    try {
-      let filePath = contentType === "text" ? null : editing.file_path;
-      let fileName = contentType === "text" ? null : editing.file_name;
-      let mimeType = contentType === "text" ? null : editing.mime_type;
-
-      if (file && contentType !== "text") {
-        assertBacklineFile(file, contentType);
-
-        const metadata = await uploadBacklineFile({
-          sectionKey: editing.section_key as SectionKey,
-          contentType,
-          file,
-        });
-        filePath = metadata.filePath;
-        fileName = metadata.fileName;
-        mimeType = metadata.mimeType;
-      }
-
-      const fileMetadata: BacklineFileMetadata | null = contentType === "text" || !filePath
-        ? null
-        : { filePath, fileName, mimeType };
-      await saveBacklineContent({
-        sectionKey: editing.section_key as SectionKey,
-        title,
-        contentType,
-        bodyText,
-        fileMetadata,
-      });
-      toast.success(t("backline.saved"));
-      onSaved();
-    } catch (error: unknown) {
-      const validationKey = fileValidationTranslationKey(error);
-      toast.error(error instanceof TypeError ? t("common.networkIssue") : validationKey ? t(validationKey) : getErrorMessage(error, t("backline.saveFailed")));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={!!editing} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="max-w-[min(30rem,calc(100vw-1rem))]">
-        <DialogHeader>
-          <DialogTitle>{t("backline.editTitle", { section: editing?.section_key ? backlineSectionLabel(editing.section_key, t) : t("backline.contentFallback") })}</DialogTitle>
-        </DialogHeader>
-        <DialogBody className="space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="backline-title">{t("backline.formTitle")}</Label>
-              <span className="shrink-0 type-chip text-muted-foreground tabular-nums">
-                {t("backline.charCounter", { count: title.length, max: BACKLINE_TITLE_MAX_CHARS })}
-              </span>
-            </div>
-            <Input
-              id="backline-title"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                setErrors((current) => ({ ...current, title: undefined }));
-              }}
-              maxLength={BACKLINE_TITLE_MAX_CHARS}
-              aria-invalid={!!errors.title}
-              aria-describedby={errors.title ? "backline-title-error" : undefined}
-            />
-            {errors.title && <p id="backline-title-error" className="text-xs text-destructive">{errors.title}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("backline.contentType")}</Label>
-            <Select value={contentType} onValueChange={(value: BacklineContentType) => { setContentType(value); setFile(null); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">{t("backline.text")}</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
-                <SelectItem value="image">{t("backline.image")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {contentType === "text" ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="backline-text">{t("backline.text")}</Label>
-                <span className="shrink-0 type-chip text-muted-foreground tabular-nums">
-                  {t("backline.charCounter", { count: bodyText.length, max: BACKLINE_BODY_MAX_CHARS })}
-                </span>
-              </div>
-              <Textarea
-                id="backline-text"
-                className="min-h-40 resize-none"
-                value={bodyText}
-                onChange={(e) => {
-                  setBodyText(e.target.value);
-                  setErrors((current) => ({ ...current, bodyText: undefined }));
-                }}
-                maxLength={BACKLINE_BODY_MAX_CHARS}
-                placeholder={t("backline.textPlaceholder")}
-                aria-invalid={!!errors.bodyText}
-                aria-describedby={errors.bodyText ? "backline-text-error" : undefined}
-              />
-              {errors.bodyText && <p id="backline-text-error" className="text-xs text-destructive">{errors.bodyText}</p>}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="backline-file">{contentType === "pdf" ? "PDF" : t("backline.image")}</Label>
-              <Input
-                id="backline-file"
-                type="file"
-                accept={contentType === "pdf" ? "application/pdf" : "image/*"}
-                onChange={(e) => {
-                  const nextFile = e.target.files?.[0] ?? null;
-                  if (!nextFile) {
-                    setFile(null);
-                    return;
-                  }
-                  try {
-                    assertBacklineFile(nextFile, contentType);
-                    setFile(nextFile);
-                    setErrors((current) => ({ ...current, file: undefined }));
-                  } catch (error: unknown) {
-                    setFile(null);
-                    e.target.value = "";
-                    const validationKey = fileValidationTranslationKey(error);
-                    setErrors((current) => ({ ...current, file: validationKey ? t(validationKey) : getErrorMessage(error, t("validation.fileInvalid")) }));
-                  }
-                }}
-                aria-invalid={!!errors.file}
-                aria-describedby={errors.file ? "backline-file-error" : undefined}
-              />
-              <p className="text-xs text-muted-foreground">
-                {sanitizeDisplayText(file?.name || editing?.file_name) || t("backline.noFile")}
-              </p>
-              {errors.file && <p id="backline-file-error" className="text-xs text-destructive">{errors.file}</p>}
-            </div>
-          )}
-        </DialogBody>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">{t("common.cancel")}</Button>
-          <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("common.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 };
 
 export default Backline;

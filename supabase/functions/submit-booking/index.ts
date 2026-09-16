@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PublicError, publicError, rpcError } from "../_shared/public-error.ts";
 import {
-  cleanErrorMessage,
   getClientIp,
   handleCors,
   hashSubject,
@@ -9,7 +9,6 @@ import {
   rateLimitBlocked,
   rateLimitHit,
   readJsonBody,
-  statusForMessage,
   stripHtmlText,
   verifyTurnstile,
   warmupResponse,
@@ -115,7 +114,7 @@ Deno.serve(async (req) => {
     try {
       body = await readJsonBody(req, MAX_JSON_BODY_BYTES);
     } catch (error) {
-      if (error instanceof Error && /too large/i.test(error.message)) {
+      if (error instanceof PublicError && error.status === 413) {
         return json(origin, { error: "Request body is too large." }, 413);
       }
       return json(origin, { error: "Invalid booking request." }, 400);
@@ -171,9 +170,10 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase.rpc("submit_booking_request", { payload: safeBooking });
     if (error) {
-      console.error("submit_booking_request failed", error.message);
-      const message = cleanErrorMessage(error, "Could not submit booking request.");
-      return json(origin, { error: message }, statusForMessage(message));
+      // The catch-all below decides what the caller sees; log the SQLSTATE here so
+      // a Postgres-internal failure is diagnosable even though it goes out as a 500.
+      console.error("submit_booking_request failed", error.code, error.message);
+      throw rpcError(error);
     }
 
     // Record the rate-limit hit only now that a booking has committed, so the limit
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
     return json(origin, { ok: true, data });
   } catch (error) {
     console.error("submit-booking error", error);
-    const message = cleanErrorMessage(error, "Could not submit booking request.");
-    return json(origin, { error: message }, statusForMessage(message));
+    const { message, status } = publicError(error, "Could not submit booking request.");
+    return json(origin, { error: message }, status);
   }
 });

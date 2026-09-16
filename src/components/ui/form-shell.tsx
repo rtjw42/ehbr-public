@@ -15,10 +15,9 @@
 //     than one — it never closes the whole form. At depth 1, Escape closes (unless
 //     the screen is non-dismissable, e.g. Turnstile mid-verify).
 //   • No outside-click close, ever (guards in-progress input).
-//   • Built on Radix Dialog, so focus-trap, portal and aria come for free.
-//
-// Deliberately NOT here yet (follow-up, tracked in PLANS Current #2):
-//   • dimming/inerting the nav while open (cross-component signal to SiteNav)
+//   • Built on Radix Dialog, so focus-trap, portal and aria come for free — its
+//     modal mode inerts everything outside the sheet (the nav included), and the
+//     overlay dims it.
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";

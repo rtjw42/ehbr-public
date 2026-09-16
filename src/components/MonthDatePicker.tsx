@@ -66,15 +66,15 @@ export const MonthDatePicker = ({ selected, onToggle, max, isUnavailable, minDat
   }, [monthAnchor, onMonthChange]);
 
   // Weekday headers + the padded 6-week grid come from the shared hook, so this and
-  // DateField's calendar can never drift (Sunday-first lives in exactly one place).
+  // CalendarPanel can never drift (Sunday-first lives in exactly one place).
   const { gridDays, weekdayLabels } = useMonthGrid(monthAnchor, dateLocale);
 
   return (
     <div className={compact ? "space-y-1.5" : "space-y-3"}>
-      {/* Month nav — shared with DateField's calendar. */}
+      {/* Month nav — shared with CalendarPanel. */}
       <MonthNavHeader monthAnchor={monthAnchor} onMonthChange={setMonthAnchor} canGoPrev={canGoPrev} canGoNext={canGoNext} compact={compact} trailing={headerTrailing} />
 
-      {/* Accessible grid — shared with DateField's calendar. A selected day stays enabled
+      {/* Accessible grid — shared with CalendarPanel. A selected day stays enabled
           (to allow deselect) even if unavailable; only unselected past/unavailable/at-cap
           days disable. */}
       <DayGrid

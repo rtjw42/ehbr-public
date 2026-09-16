@@ -6,6 +6,7 @@
 // minted server-side with the service role; no admin state is exposed to the
 // caller.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PublicError } from "../_shared/public-error.ts";
 import {
   getClientIp,
   handleCors,
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     try {
       body = await readJsonBody(req, MAX_JSON_BODY_BYTES);
     } catch (error) {
-      if (error instanceof Error && /too large/i.test(error.message)) {
+      if (error instanceof PublicError && error.status === 413) {
         return json(origin, { error: "Request body is too large." }, 413);
       }
       return json(origin, { error: "Invalid password reset request." }, 400);

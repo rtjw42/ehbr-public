@@ -28,11 +28,21 @@
 //    than the real calendar, and navigating months swaps a 5-week grid for a
 //    6-week one. Both used to leave the panel overflowing the body's bottom edge.
 //
+// 6. WHEN IT DOES SCROLL, IT SAYS SO. The clamp in (5) means a panel with a long
+//    list — ContactsForm's five networks, opened from a row near the bottom — is
+//    legitimately shorter than its content. It carries the same scroll-progress
+//    bar the dialog bodies use (ui/scroll-fade), pinned to its bottom edge and
+//    invisible until there is something to scroll, so a clipped list reads as
+//    "more below" rather than as the list ending there. That is why the panel is
+//    an outer frame plus an inner scroller: an absolutely-positioned bar inside a
+//    scroll container scrolls away with the content.
+//
 // Motion is the panel's own clipped slide + fade — transform/opacity only, so text
 // never sits mid-translate and never resamples.
 import * as React from "react";
 
 import { motionDurations, motionEase } from "@/lib/motion";
+import { ScrollFadeBar, useScrollFadeHandles, useScrollFadeWriter } from "@/components/ui/scroll-fade";
 import { cn } from "@/lib/utils";
 
 const GAP = 8; // breathing room between trigger and panel, and against the body edge
@@ -82,6 +92,9 @@ export function PickerDropdown({ open, onClose, anchorRef, children, ariaLabel, 
 
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
+  // The element that actually scrolls, inside the panel frame. Separate from the
+  // panel so the progress bar can sit on the frame and stay put — see (6) above.
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   // The content box INSIDE the panel. Measured instead of the panel itself: the
   // panel's height is clamped, so once capped it stops changing and would hide any
   // further content growth from the observer.
@@ -227,6 +240,13 @@ export function PickerDropdown({ open, onClose, anchorRef, children, ariaLabel, 
     if (settleTimer.current) window.clearTimeout(settleTimer.current);
   }, []);
 
+  // Scroll progress, painted imperatively onto the bar node — no render per scroll
+  // tick. The resync key is what re-attaches the writer once the panel exists: the
+  // scroller only mounts with the panel, and the ref alone would never tell the
+  // effect that it had appeared.
+  const scrollHandles = useScrollFadeHandles();
+  useScrollFadeWriter(scrollerRef, scrollHandles, mounted ? "mounted" : "unmounted");
+
   // Release the clip once the panel is at rest so its shadow isn't cut off (and a
   // nested overlay isn't trapped). Clipped again on close by the effect above.
   React.useEffect(() => {
@@ -289,20 +309,38 @@ export function PickerDropdown({ open, onClose, anchorRef, children, ariaLabel, 
           // with no room below it produced maxHeight === 0 — falsy, so the clamp
           // was dropped entirely and the panel rendered at full height, spilling
           // past the body's bottom edge. Exactly the clipping this clamp prevents.
-          style={maxHeight !== undefined ? { maxHeight, overflowY: "auto" } : undefined}
+          style={maxHeight !== undefined ? { maxHeight } : undefined}
           data-picker-panel=""
+          // The frame: it holds the clamp, the padding and the chrome, and it does
+          // NOT scroll — `flex flex-col` is what hands its bounded height down to
+          // the scroller, and `overflow-hidden` is what clips the progress bar to
+          // the rounded corners.
           className={cn(
-            "overscroll-contain rounded-lg border border-border bg-card p-2 shadow-lg dark:shadow-none",
-            // Matches the form body: scrollable, but no native scrollbar track.
-            "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "relative flex flex-col overflow-hidden rounded-lg border border-border bg-card p-2 shadow-lg dark:shadow-none",
             className,
           )}
         >
-          <div ref={contentRef}>{children}</div>
+          <div
+            ref={scrollerRef}
+            className={cn(
+              // `flex-auto` (basis:auto), NOT `flex-1` (basis:0): the frame's height
+              // is auto-with-a-max, not definite, and a zero basis in an auto-height
+              // column has no content height to grow from. With basis:auto the item
+              // takes its content height until the frame's max-height clamps the
+              // line, and then `min-h-0` lets it shrink below that and scroll.
+              "min-h-0 flex-auto overscroll-contain overflow-y-auto",
+              // Matches the form body: scrollable, but no native scrollbar track —
+              // the progress bar below is the affordance.
+              "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            )}
+          >
+            <div ref={contentRef}>{children}</div>
+          </div>
+          {/* Sits on the panel's bottom border — the edge the content is cut off
+              at. Invisible until there is something to scroll. */}
+          <ScrollFadeBar handles={scrollHandles} className="bottom-0" />
         </div>
       </div>
     </div>
   );
 }
-
-export default PickerDropdown;

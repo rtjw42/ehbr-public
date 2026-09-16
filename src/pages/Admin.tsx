@@ -47,9 +47,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LazyBookingForm } from "@/components/LazyBookingForm";
 import type { BookingFormSubmitResult } from "@/components/BookingForm";
-import { preloadBookingForm } from "@/lib/booking-form-loader";
+import { LazyBookingForm, preloadBookingForm } from "@/lib/form-loaders";
 import { useAdmin } from "@/hooks/useAdmin";
 import { sanitizeDisplayText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
@@ -93,7 +92,7 @@ import {
   loadAdminBookings,
 } from "@/services/bookings";
 import { useI18n } from "@/hooks/useI18n";
-import type { TranslationKey } from "@/lib/i18n";
+import type { Translate, TranslationKey } from "@/lib/i18n";
 import { formatClockRange, formatLocalizedDate } from "@/lib/date";
 
 type ApprovedSingle = { kind: "single"; booking: Booking };
@@ -2217,7 +2216,7 @@ const isApprovedRowPast = (row: ApprovedRow, now: number) => {
 
 const DAY_MS = 86_400_000;
 
-const relativeExpiry = (expiresAt: string, t: (key: TranslationKey, vars?: Record<string, string | number>) => string) => {
+const relativeExpiry = (expiresAt: string, t: Translate) => {
   const ms = new Date(expiresAt).getTime() - Date.now();
   if (ms <= 0) {
     const days = Math.floor(-ms / DAY_MS);

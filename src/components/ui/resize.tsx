@@ -4,20 +4,24 @@
 // (delayed unmount), and old → new when `dep` changes (a declared content swap,
 // e.g. a keyed step/view/mode switch inside).
 //
-// AT REST THE BOX IS height:auto. That is the load-bearing design decision:
-// a nested <Resize> (a picker inside a form panel) glides its own height and
-// the change flows straight through an auto-height ancestor — no observer
-// re-gliding it, no nested-glider fight, no per-frame tracking. Pixel heights
-// exist ONLY while this box's own glide is in flight (auto→px pins don't
-// animate — `auto` isn't interpolable — so pinning is instant and only the
-// px→px leg glides).
+// AT REST THE BOX IS height:auto. That is the load-bearing design decision: a
+// nested <Resize> glides its own height and the change flows straight through an
+// auto-height ancestor — no observer re-gliding it, no nested-glider fight, no
+// per-frame tracking. Pixel heights exist ONLY while this box's own glide is in
+// flight (auto→px pins don't animate — `auto` isn't interpolable — so pinning is
+// instant and only the px→px leg glides).
 //
 // Division of labour (the no-conflicting-paths rule):
 //   • <Resize> owns HEIGHT. One writer per box; nesting is safe because rest
 //     state is auto.
 //   • Content inside may crossfade (keyed motion.div, opacity only) — the pair
 //     reads as one gesture.
-//   • <Collapse> owns expand-from-nothing (0 ↔ content); see ui/collapse.tsx.
+//   • Expand-from-nothing is NOT a height glide any more. <Collapse> (grid-rows
+//     0fr↔1fr) was deleted 2026-09-15 — its last caller, the public setlist,
+//     re-laid-out 30 rows a frame and stuttered on phones. A disclosure now
+//     commits its layout once and reveals on transform/opacity
+//     (`.disclosure-reveal`, animations.css). This file is the only height
+//     animation left, by design (DESIGN_SYSTEM → Motion).
 //
 // Rule #1 intact (per-frame values never pass through React state): the glide
 // is a CSS `transition: height` — the browser interpolates; React only sets
@@ -28,9 +32,11 @@
 // data-resizing is set while a height transition is actually running (driven by
 // the browser's transitionrun/end/cancel), letting the dialog surface drop its
 // blurred shadow mid-glide (globals.css).
+//
+// Sole caller: DayDetailDialog's list ⇄ detail swap. Forms do not use this — a
+// form's frame never changes height (DESIGN_SYSTEM → Form System).
 import * as React from "react";
 
-import { centerInDialogScroller } from "@/lib/animate-scroll";
 import { resizeTransition } from "@/lib/motion";
 
 const HEIGHT_TRANSITION = `height ${resizeTransition.duration}s cubic-bezier(${resizeTransition.ease.join(", ")})`;
@@ -41,24 +47,10 @@ const SETTLE_FALLBACK_MS = resizeTransition.duration * 1000 + 80;
 interface ResizeProps {
   show: boolean;
   /**
-   * Pan the surrounding dialog scroller so the content lands in view when it
-   * morphs — for a swap the user just triggered (switching to the tall
-   * pick-dates calendar), so they always see what they're now editing. The pan
-   * runs on the same duration+curve as the glide, so they read as one gesture.
-   * No-op outside a scroll container.
-   */
-  scrollIntoView?: boolean;
-  /**
-   * Pass false to skip the closing glide and unmount immediately. Used for the
-   * picker-registry handoff: the incoming picker's centring pan measures layout
-   * right away, and an outgoing panel still collapsing would skew the target.
-   */
-  exit?: boolean;
-  /**
    * Glide old → new height when this value changes while open — the declared
-   * "content swap" signal (step key, view kind, mode toggle, month anchor).
-   * Undeclared content changes (typing reveals an error row, a nested picker
-   * glides) flow through the at-rest auto height instantly/naturally.
+   * "content swap" signal (a view kind, a mode toggle). Undeclared content
+   * changes (typing reveals an error row) flow through the at-rest auto height
+   * instantly/naturally.
    */
   dep?: unknown;
   /** Applied to the inner content wrapper (use padding for gaps, not margin —
@@ -68,7 +60,7 @@ interface ResizeProps {
 }
 
 export const Resize = React.forwardRef<HTMLDivElement, ResizeProps>(
-  ({ show, exit = true, dep, scrollIntoView, className, children }, ref) => {
+  ({ show, dep, className, children }, ref) => {
     const [present, setPresent] = React.useState(show);
     // undefined = auto (at rest). Px only while a glide is in flight.
     const [height, setHeight] = React.useState<number | undefined>(show ? undefined : 0);
@@ -168,12 +160,12 @@ export const Resize = React.forwardRef<HTMLDivElement, ResizeProps>(
         return;
       }
       const inner = innerRef.current;
-      if (!outerRef.current || !inner || !exit) {
+      if (!outerRef.current || !inner) {
         setPresent(false);
         return;
       }
       return glideHeight(inner.scrollHeight, 0, () => setPresent(false));
-    }, [show, exit, glideHeight]);
+    }, [show, glideHeight]);
 
     // Open glide: 0 → natural, then release to auto so nested glides flow free.
     React.useLayoutEffect(() => {
@@ -201,9 +193,8 @@ export const Resize = React.forwardRef<HTMLDivElement, ResizeProps>(
       const from = lastHeightRef.current;
       const to = inner.scrollHeight;
       if (from == null || Math.abs(from - to) < 1) return;
-      if (scrollIntoView) centerInDialogScroller(inner);
       return glideHeight(from, to, () => setHeight(undefined));
-    }, [dep, show, present, scrollIntoView, glideHeight]);
+    }, [dep, show, present, glideHeight]);
 
     if (!show && !present) return null;
 
@@ -218,12 +209,11 @@ export const Resize = React.forwardRef<HTMLDivElement, ResizeProps>(
         // rest and a pixel value only mid-glide, so it is exactly the right
         // condition — no extra state, no CSS hook.
         //
-        // Permanent clipping was wrong once FLIP arrived (Phase N): a picker's
-        // panel is position:absolute and its spacer collapses INSTANTLY on close,
-        // so this box shrinks instantly too — and a permanently-clipping ancestor
-        // would cut the still-animating panel dead instead of letting it slide
-        // out. At rest there is nothing to clip anyway (the box is its content's
-        // natural height).
+        // Permanent clipping would be wrong: an out-of-flow overlay inside this
+        // box (a dropdown panel, a shadow) animates on its own timeline, and a
+        // permanently-clipping ancestor would cut it dead mid-slide instead of
+        // letting it finish. At rest there is nothing to clip anyway (the box is
+        // its content's natural height).
         style={{ height, overflow: height === undefined ? "visible" : "hidden", transition: HEIGHT_TRANSITION }}
       >
         <div ref={measureRef} className={className}>
