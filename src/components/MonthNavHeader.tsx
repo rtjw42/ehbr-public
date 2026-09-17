@@ -77,5 +77,3 @@ export const MonthNavHeader = ({ monthAnchor, onMonthChange, canGoPrev = true, c
     </div>
   );
 };
-
-export default MonthNavHeader;

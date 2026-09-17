@@ -3,7 +3,7 @@ import { CONTACT_EMAIL } from "@/lib/site-config";
 
 export const PRIVACY_COPY: LegalCopy = {
   title: "隐私政策",
-  updated: "最后更新：2026 年 9 月",
+  updated: "最后更新：2026 年 9 月 17 日",
   blocks: [
     {
       heading: "概述",
@@ -15,7 +15,7 @@ export const PRIVACY_COPY: LegalCopy = {
       heading: "我们收集的信息",
       paragraphs: ["我们仅收集运营服务所必需的信息："],
       bullets: [
-        { label: "提交数据", text: "提交房间申请时提供的活动名称和姓名" },
+        { label: "提交数据", text: "提交房间申请时提供的活动名称、姓名，以及您选择填写的备注" },
         { label: "使用数据", text: "通过 Vercel Analytics 收集的匿名、汇总的页面浏览统计信息。其中不包含任何个人信息，不设置 Cookie，也不进行跨站追踪。" },
         { label: "性能数据", text: "通过 Vercel Speed Insights 收集的匿名加载速度和响应性能指标（Web Vitals），用于监测和改进服务。该数据不包含任何个人信息，不设置 Cookie，也不进行跨站追踪。" },
         { label: "防滥用数据", text: "提交公开表单时，我们会记录您 IP 地址经加盐处理的单向哈希值，用于实施访问频率限制并阻止自动化滥用行为。您的 IP 地址本身不会被存储，该哈希值也无法还原为原始地址，且此类记录将在 24 小时后自动删除。此外，每个公开表单上的人机验证 Cloudflare Turnstile 也会接收您的 IP 地址和浏览器信号，以完成该项验证。" },
@@ -25,7 +25,7 @@ export const PRIVACY_COPY: LegalCopy = {
     {
       heading: "信息用途",
       paragraphs: [
-        "提交数据用于处理和管理乐队排练室申请。为协调共享日程，已获批准申请的详情（其活动名称及所提供的姓名）会被发送至供乐队管理员和成员使用的私密 Telegram 群组。使用数据和性能数据仅用于了解整体流量模式、监测页面加载速度并改进服务；防滥用数据仅用于实施访问频率限制，错误诊断数据仅用于修复故障。以上数据均不会用于营销或用户画像。",
+        "提交数据用于处理和管理乐队排练室申请。申请提交时，其活动名称、所提供的姓名及任何备注会被发送至乐队管理员用于审核的私密 Telegram 聊天；申请获批后，活动名称和姓名会显示在乐队私密 Telegram 群组的每周日程板上。使用数据和性能数据仅用于了解整体流量模式、监测页面加载速度并改进服务；防滥用数据仅用于实施访问频率限制，错误诊断数据仅用于修复故障。以上数据均不会用于营销或用户画像。",
       ],
     },
     {
@@ -36,7 +36,7 @@ export const PRIVACY_COPY: LegalCopy = {
       bullets: [
         { label: "Supabase", text: "数据库及身份验证基础设施。隐私政策与条款", href: "https://supabase.com/privacy" },
         { label: "Vercel", text: "托管与分析服务。隐私政策与条款", href: "https://vercel.com/legal/privacy-policy" },
-        { label: "Telegram", text: "即时通讯平台。当申请获批时，其活动名称及所提供的姓名会被发送至供乐队管理员和成员协调日程使用的私密 Telegram 群组。隐私政策", href: "https://telegram.org/privacy" },
+        { label: "Telegram", text: "即时通讯平台。申请提交时，其活动名称、所提供的姓名及任何备注会被发送至乐队管理员用于审核的私密 Telegram 聊天；申请获批后，活动名称和姓名会显示在乐队私密 Telegram 群组的每周日程板上。隐私政策", href: "https://telegram.org/privacy" },
         { label: "Cloudflare", text: "机器人防护。Turnstile 运行于每一个公开表单，并接收您的 IP 地址和浏览器信号，以区分真人与自动化滥用行为。隐私政策", href: "https://www.cloudflare.com/privacypolicy/" },
         { label: "Resend", text: "事务性邮件发送服务。仅用于管理员账户邮件（登录邀请和密码重置），因此只会处理管理员的电子邮箱地址。提交排练室申请不会发送任何邮件，与该服务商完全无关。隐私政策", href: "https://resend.com/legal/privacy-policy" },
         { label: "Sentry", text: "错误监测服务，仅在您接受本政策后启用。接收故障的技术细节，并已配置为排除个人信息。隐私政策", href: "https://sentry.io/privacy/" },

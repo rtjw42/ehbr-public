@@ -175,5 +175,3 @@ export function DayGrid({
     </div>
   );
 }
-
-export default DayGrid;

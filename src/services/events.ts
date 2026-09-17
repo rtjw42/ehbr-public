@@ -18,10 +18,6 @@ export type EventDraft = {
   eventTime: string;
   endTime?: string;
   posterUrl: string | null;
-  // Optional so existing callers (and Stage 2's untouched EventForm) keep working;
-  // the form starts passing real arrays in Stage 3.
-  media?: MediaItem[];
-  setlist?: SetlistEntry[];
 };
 
 export type SaveEventInput = {
@@ -40,12 +36,6 @@ type EventPayload = {
   event_date: string;
   end_date: string | null;
   poster_url: string | null;
-  // Only present when the caller actually edits them. EventForm owns the basics and
-  // leaves these out, so its updates must NOT touch the jsonb columns — those are
-  // owned by updateEventMedia (MediaSetlistForm). Including them here with a
-  // default would wipe an event's media/setlist on every basics edit.
-  media?: MediaItem[];
-  setlist?: SetlistEntry[];
 };
 
 // The DB returns media/setlist as untyped jsonb; everything else maps 1:1.
@@ -162,13 +152,8 @@ export const buildEventPayloadFromDraft = (draft: EventDraft): EventPayload => {
     poster_url: draft.posterUrl,
   };
 
-  // Only write the jsonb columns when the caller supplied them. EventForm omits
-  // them, so its updates leave any existing media/setlist intact (insert falls back
-  // to the column's '[]' default). Validate/strip when present — the form is the
-  // first gate, this is the net.
-  if (draft.media !== undefined) payload.media = parseMediaItems(draft.media);
-  if (draft.setlist !== undefined) payload.setlist = parseSetlistEntries(draft.setlist);
-
+  // media/setlist are never written here — updateEventMedia owns them — so an
+  // event update leaves them intact and an insert takes the column's '[]' default.
   return payload;
 };
 

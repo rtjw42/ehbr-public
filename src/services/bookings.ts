@@ -453,7 +453,7 @@ export const approveBooking = async (bookingId: string) => {
 
 // Atomic, no-overwrite group approval: every instance approves in one transaction,
 // or none do (a clash with an approved booking trips no_approved_overlap and aborts).
-// The overwrite RPCs are gone — an Approve never bumps an approved booking.
+// An Approve never bumps an approved booking.
 export const approveBookingGroup = async (groupId: string) => {
   const { error } = await supabase.rpc("approve_booking_group", { _group_id: groupId });
   if (error) throwBookingError(error, "Could not approve booking.");

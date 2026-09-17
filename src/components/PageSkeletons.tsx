@@ -1,6 +1,6 @@
 import { useI18n } from "@/hooks/useI18n";
 
-const SkeletonBlock = ({ className }: { className: string }) => (
+export const SkeletonBlock = ({ className }: { className: string }) => (
   <div className={`skeleton-block ${className}`} aria-hidden="true" />
 );
 

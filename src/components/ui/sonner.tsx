@@ -1,10 +1,11 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
+
+import { usePreferences } from "@/hooks/usePreferences";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  const { theme } = usePreferences();
 
   return (
     <Sonner

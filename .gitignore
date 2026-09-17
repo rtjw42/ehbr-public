@@ -20,7 +20,7 @@ coverage
 .claude/skills/
 skills-lock.json
 *.tsbuildinfo
-# NOTE: agent/planning docs (CLAUDE.md, AGENTS.md, PLANS.md, SECURITY.md,
+# NOTE: agent/planning docs (CLAUDE.md, AGENTS.md, PLANS.md,
 # docs/agent/) are tracked in the PRIVATE repo so they sync across machines.
 # scripts/release.sh strips them from the public mirror (PRIVATE_PATHS) and
 # aborts if any is still tracked — so they never leak. Do NOT re-ignore them.

@@ -1,9 +1,7 @@
 // ── CalendarPanel ────────────────────────────────────────────────────────────
 // The single-date month calendar. Every single-date input in the app is this one
 // implementation, mounted inside a PickerDropdown (which passes `compact`) —
-// BookingForm and EventForm both reach it that way. (It was extracted from the old
-// inline DateField panel, which the EventForm port deleted along with the rest of
-// the FLIP picker family.)
+// BookingForm and EventForm both reach it that way.
 //
 // Purely presentational: emits a "yyyy-MM-dd" string through onChange, so the
 // storage path (combineDateTime → toISOString → bookings) is byte-for-byte unchanged.

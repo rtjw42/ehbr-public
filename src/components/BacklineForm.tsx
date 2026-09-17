@@ -2,21 +2,10 @@
 // Admin-only editor for one Backline section (Gear or Rates): title, content type,
 // and either inline text or an uploaded PDF/image.
 //
-// Named `*Form`, not `*Dialog`, on purpose: in this codebase the suffix says which
-// shell a modal is built on — `*Form` is on `FormShell` (BookingForm, EventForm),
-// `*Dialog` is on the raw Radix Dialog (DayDetailDialog, BookingGuidelinesDialog,
-// TurnstileVerificationDialog). It carried the `*Dialog` name while it was still an
-// inline component in the page; keeping that after the Form System port would have
-// made the name say the opposite of what this is.
-//
-// ── Why this is its own file ─────────────────────────────────────────────────
-// It used to live inside `pages/Backline.tsx`, which put it in the public page
-// chunk: every anonymous visitor to /backline downloaded the whole admin form —
-// plus the `form-shell` and `upload-field` chunks it pulls in — for a form they can
-// never open. Measured at 5.28 → 8.83 kB gzip on that route; extracting it took the
-// public route to 3.08. It is now `lazy()`-imported AND gated on
-// `showAdminControls`; both halves are needed, because lazy alone still fetches
-// once the component mounts. See DESIGN_SYSTEM.md → Form System.
+// On FormShell, lazy + gated (DESIGN_SYSTEM.md → Form System → Placement). The
+// content type is a SegmentedControl (a small fixed set, and the one Radix Select
+// that used to portal past the sheet's edge), and the content slot is one fixed
+// height for all three modes so switching never resizes the form.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
@@ -49,22 +38,9 @@ import {
 const BACKLINE_TITLE_MAX_CHARS = 255;
 const BACKLINE_BODY_MAX_CHARS = 5000;
 
-// ── Two things the Form System port fixed beyond the shell swap ──────────────
-//
-//   1. The content-type Radix <Select> is gone. It was the LAST portalled dropdown
-//      inside a form, and portalling escaped the scroll-bounds clamp PickerDropdown
-//      exists to guarantee — so it was the one surface that could render past the
-//      sheet's edge or flip above its own trigger. Text │ PDF │ Image is a small
-//      fixed set, which is a SegmentedControl by the dropdown-language rule.
-//   2. Switching type no longer resizes the form. The content slot is ONE fixed
-//      height for all three modes, and the modes crossfade inside it (opacity only,
-//      the shell's own screen-swap language). With a segmented control the switch is
-//      a single tap, so an unreserved slot would have jumped constantly.
-//
-// A stored file only counts for the type it was uploaded as: switching pdf → image
-// and saving used to keep `file_path` pointing at the old PDF while `content_type`
-// said "image", which the public card then tried to render in an <img>.
-const CONTENT_SLOT = "h-40"; // one height, every mode — see (2) above
+// A stored file belongs to the type it was uploaded as: switching pdf → image must
+// clear `file_path`, or the public card tries to render a PDF in an <img>.
+const CONTENT_SLOT = "h-40"; // one height, every mode, so a type switch never resizes
 
 type BacklineFormErrors = { title?: string; bodyText?: string; file?: string };
 type BacklineFormErrorKey = keyof BacklineFormErrors;

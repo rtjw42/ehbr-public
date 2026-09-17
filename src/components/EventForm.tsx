@@ -15,12 +15,9 @@
 //
 // ── Poster uploads are DEFERRED to save ──────────────────────────────────────
 // The crop produces a Blob that is held in state and previewed from an object URL;
-// the bytes only reach storage inside handleSave. The old flow uploaded the moment
-// the crop was confirmed, which orphaned an object in the bucket every time an
-// admin cancelled the dialog or re-cropped — nothing referenced those files and
-// nothing cleaned them up. This also means a failed upload leaves the form intact
-// (retry Save) instead of making the admin re-pick the file, and it drops a
-// duplicate ensureAdminSession round-trip.
+// the bytes only reach storage inside handleSave. Uploading at crop time orphaned a
+// bucket object on every cancel or re-crop; deferring also lets a failed upload be
+// retried with the form intact, and it saves a second ensureAdminSession round-trip.
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -240,9 +237,6 @@ export const EventForm = ({ open, onClose, editing, onSaved }: Props) => {
     }
   };
 
-  // Every failure path here used to be a silent unhandled rejection: the old
-  // handleSave was try/finally with no catch, so a decode failure or a null toBlob
-  // left the dialog sitting there with no message at all.
   const applyCrop = async () => {
     if (!cropSrc || !cropArea || cropping) return;
     setCropping(true);

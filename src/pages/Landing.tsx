@@ -28,10 +28,7 @@ import aboutCardBgAvif from "@/assets/about-card.avif";
 import eventsCardBg from "@/assets/landing-events.jpeg";
 import eventsCardBgWebp from "@/assets/landing-events.webp";
 import eventsCardBgAvif from "@/assets/landing-events.avif";
-
-const SkeletonBlock = ({ className }: { className: string }) => (
-  <div className={`skeleton-block ${className}`} aria-hidden="true" />
-);
+import { SkeletonBlock } from "@/components/PageSkeletons";
 
 const Landing = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -144,7 +141,7 @@ const Landing = () => {
           <div className="relative z-10 mx-auto flex min-h-svh w-full max-w-7xl flex-col justify-center gap-8 px-4 py-[clamp(5.5rem,12vh,7rem)] sm:px-6">
             {/* Heading */}
             <div className="min-w-0 pt-4 sm:pt-8">
-              <h1 className="type-hero m-0 max-w-[10ch] text-wrap text-[hsl(20_28%_8%)] dark:text-foreground">
+              <h1 className="type-hero m-0 max-w-[10ch] text-wrap text-[hsl(var(--landing-hero-foreground))] dark:text-foreground">
                 Eusoff Bandits
               </h1>
             </div>

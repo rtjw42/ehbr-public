@@ -3,37 +3,10 @@
 // phone, WhatsApp) — up to MAX_CONTACT_FIELDS of them in total, written through
 // services/contacts after the admin session is re-verified.
 //
-// Named `*Form`, not `*Dialog`: the suffix says which shell a modal is built on,
-// and this is now `FormShell` (DESIGN_SYSTEM.md → Form System → Placement). It was
-// `ContactManagerDialog` while it was still on the raw Radix dialog.
-//
-// ── What the port changed ────────────────────────────────────────────────────
-// 1. THE FIVE ⌄ SECTIONS ARE GONE — deleted, not converted. Five collapsible
-//    sections for a list capped at five inputs cost more than they saved, and every
-//    network was listed even when empty, so the common case (two links) rendered
-//    three sections of nothing. Now only links that EXIST render, as flat rows, and
-//    the five networks live inside the Add row's dropdown. This copy never animated
-//    its sections (plain `{isOpen && …}`), so removing them removes the pattern
-//    rather than porting it — no `Collapse` was ever introduced here.
-// 2. A REFUSED SAVE NOW LANDS ON THE PROBLEM. The old message sat at the top of the
-//    dialog body and nothing moved to it. `useInvalidFieldFocus` is the shared
-//    answer, and it finds its scroll container via `[data-form-body]` — a marker
-//    only FormShell sets, which is why this behaviour arrives WITH the shell swap
-//    rather than before it.
-// 3. The keyboard translates the sheet instead of covering the fields, and the
-//    frame no longer resizes — both inherited from FormShell.
-//
-// Rows are the shared `ui/row-list` shape (icon-in-input + remove), which was
-// extracted from the concrete rows this file shipped with once MediaSetlistForm
-// had the second shape in hand — abstracting from one example would only have
-// guessed at it.
-//
-// ── Why this is its own file ─────────────────────────────────────────────────
-// It used to live inside `SiteFooter.tsx`, and SiteFooter is a static import in
-// App.tsx — so this admin form sat in the main bundle, downloaded by every
-// anonymous visitor on EVERY route. It is now `lazy()`-imported AND gated on
-// `showAdminControls`; both halves are needed, because lazy alone still fetches
-// once the component mounts. See DESIGN_SYSTEM.md → Form System.
+// On FormShell, lazy + gated (DESIGN_SYSTEM.md → Form System → Placement). Only
+// links that exist render, as `ui/row-list` rows; the five networks live in the
+// Add row's PickerDropdown. The list is one FormField, so its single error
+// ("add at least one link") focuses the control that fixes it.
 import { useLayoutEffect, useRef, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";

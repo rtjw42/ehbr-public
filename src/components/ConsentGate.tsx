@@ -7,7 +7,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ChevronRight, Clock, Languages, Sun } from "lucide-react";
 import { initSentryAfterConsent } from "@/lib/sentry";
-import { consentEntrance, splashCtaEntrance, splashLogoEntrance } from "@/lib/motion";
+import {
+  consentEntrance,
+  consentGateExit,
+  consentStepExit,
+  splashCtaEntrance,
+  splashCtaNudge,
+  splashLogoEntrance,
+} from "@/lib/motion";
 import { getLegalContent } from "@/lib/legal";
 import { LegalCopyRenderer } from "@/components/LegalCopyRenderer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -124,10 +131,10 @@ export const ConsentGate = ({ children }: { children: ReactNode }) => {
           <motion.div
             key="consent-gate"
             className="consent-gate"
-            exit={{ opacity: 0, transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
+            exit={consentGateExit}
           >
             {/* The textured backdrop is the root canvas (html), which shows through behind
-                this transparent gate — no separate background layer needed here any more. */}
+                this transparent gate. */}
 
             <AnimatePresence mode="wait">
         {step === "splash" ? (
@@ -149,7 +156,7 @@ export const ConsentGate = ({ children }: { children: ReactNode }) => {
             }}
             initial="hidden"
             animate="visible"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            exit={consentStepExit}
           >
             <motion.img
               src="/icon-512.png"
@@ -166,8 +173,7 @@ export const ConsentGate = ({ children }: { children: ReactNode }) => {
               <motion.span
                 className="inline-flex"
                 aria-hidden
-                animate={{ x: [0, 3, 0] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                {...splashCtaNudge}
               >
                 <ChevronRight className="h-4 w-4" />
               </motion.span>
@@ -183,7 +189,7 @@ export const ConsentGate = ({ children }: { children: ReactNode }) => {
             variants={consentEntrance}
             initial="hidden"
             animate="visible"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            exit={consentStepExit}
           >
             <div className="consent-body">
               {step === "language" ? (

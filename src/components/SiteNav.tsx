@@ -105,8 +105,7 @@ export const SiteNav = () => {
   const panelAnimate = { ...overlayMotion.center, height: panelHeight ?? "auto" };
   const panelExit = overlayMotion.exit;
   const panelTransition = navPanelTransition;
-  // btn-interactive only — the press-scale already comes from the Button base
-  // (buttonPressClass lives in the Button cva), so adding it here was redundant.
+  // btn-interactive only — the press-scale comes from the Button base (buttonPressClass).
   const navControlClass = "btn-interactive";
   // Icon micro-interactions are Tier-1 motion: always on, even under iOS
   // Low Power Mode, so the nav doesn't feel inert on mobile.

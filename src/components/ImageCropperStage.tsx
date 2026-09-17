@@ -8,9 +8,8 @@
 // poster ever need it. Keep this module free of anything the form needs eagerly —
 // the pure canvas export lives in `lib/image-crop.ts` for exactly that reason.
 //
-// The stage is SQUARE. The old one was a `h-[min(60svh,32rem)]` rectangle holding
-// a 1:1 crop box, which left tall dead bands of hardcoded `bg-black` above and
-// below it. Square wastes nothing, and the surface is a token.
+// The stage is SQUARE: nothing is wasted around a 1:1 crop box, and the surface
+// is a token.
 import Cropper, { type Area } from "react-easy-crop";
 
 import { MAX_ZOOM, MIN_ZOOM } from "@/lib/image-crop";

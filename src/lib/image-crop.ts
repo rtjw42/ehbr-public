@@ -4,19 +4,11 @@
 // its footer without pulling the (heavy, lazy-loaded) cropper stage into the main
 // bundle.
 //
-// TWO things this fixes over the old inline version:
-//
-// 1. IT CANNOT PRODUCE A FILE TOO BIG TO UPLOAD. The old version sized the canvas
-//    at the crop's NATIVE resolution and exported at a fixed quality 0.92 — a
-//    4032×3024 phone photo gave a 3024² JPEG, and re-encoding an already-compressed
-//    photo routinely GROWS it, so a 3MB input could exceed the 5MB upload gate and
-//    get bounced after the user had done the work. The long edge is now capped
-//    (a poster renders at ~256px; 1600 is already generous) and quality steps down
-//    until the blob fits the byte budget.
-// 2. FAILURES ARE TYPED. Image decode failure and a null `toBlob` used to surface
-//    as an untyped rejection that the caller swallowed silently. Both now throw a
-//    CropError the caller maps to localized copy — notably the HEIC case, where a
-//    file whose `type` is `image/*` still won't decode outside Safari.
+// The long edge is capped (a poster renders at ~256px; 1600 is generous) and
+// quality steps down until the blob fits the byte budget, because re-encoding an
+// already-compressed photo at native resolution routinely GROWS it past the 5MB
+// upload gate. Decode failure and a null `toBlob` throw a typed CropError the
+// caller maps to localized copy — notably HEIC, which only decodes in Safari.
 
 /** The crop rectangle in SOURCE pixels (react-easy-crop's `croppedAreaPixels`). */
 export interface CropArea {

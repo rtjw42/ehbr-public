@@ -105,6 +105,13 @@
   .type-badge {
     font-size: clamp(0.625rem, 2vw, 0.7rem);
   }
+  /* The DayBox pair: the Fraunces day-of-month and the event-time line under it. */
+  .type-day-number {
+    font-size: clamp(2.25rem, 9vw, 3rem);
+  }
+  .type-day-caption {
+    font-size: clamp(0.6rem, 1.8vw, 0.68rem);
+  }
 }
 
 @layer utilities {
@@ -118,7 +125,7 @@
   }
 
   /* Theme-aware frosted content panel. Unlike .frost-box (always-dark, lives over a
-     photo with white text), this rides on the page's photo background and is driven
+     photo with white text), this rides on the textured backdrop and is driven
      entirely by tokens: --card swaps near-white in light mode / near-black in dark,
      so the panel is "whitish glass" in light and "dark glass" in dark with foreground
      text legible in both. One class so every panel restyles from here. Own backdrop
@@ -126,7 +133,7 @@
   .frost-panel {
     /* Light mode: a SOLID surface like the nav — opaque card colour, no blur, no
        translucency. Text stays the default dark foreground. The shadow on the
-       element (shadow-sm) lifts it off the dimmed photo backdrop. */
+       element (shadow-sm) lifts it off the textured backdrop. */
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
   }

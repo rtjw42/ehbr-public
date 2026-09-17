@@ -13,9 +13,7 @@ const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
-// Scroll progress is fully imperative and shared with dialog.tsx (see
-// scroll-fade.tsx) — this file previously carried a drifted copy that still
-// transitioned `transform` (the scaleX lag the dialog version had fixed).
+// Scroll progress is imperative and shared with dialog.tsx (scroll-fade.tsx).
 const AlertScrollContext = React.createContext<ScrollFadeHandles | null>(null);
 
 const useAlertScrollContext = () => React.useContext(AlertScrollContext);

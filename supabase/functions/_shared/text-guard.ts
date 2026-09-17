@@ -6,10 +6,8 @@
 // parse_mode, so HTML-escaping alone does NOT stop it. We reject links at the
 // input boundary instead.
 //
-// MIRROR COPY: kept in sync with src/lib/text-guard.ts (the Deno functions
-// root can't share modules with the client build root — same pattern as
-// telegram-format). Change both together. Pure — no imports, no browser/Deno
-// globals — so it runs in Vitest, the browser, and Deno alike.
+// Imported by submit-booking (Deno), BookingForm (browser) and the Vitest suite
+// alike, so it stays pure — no imports, no browser/Deno globals.
 
 // Zero-width spaces, bidi overrides (U+202E can visually reverse text), word
 // joiners, and the BOM — used to hide characters or spoof how text renders.

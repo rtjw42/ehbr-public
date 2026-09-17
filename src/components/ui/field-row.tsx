@@ -1,8 +1,8 @@
 // ── FieldRow ─────────────────────────────────────────────────────────────────
-// The Form System's picker affordance: a row showing a field's CURRENT value that
-// pushes a full-frame picker screen when tapped (see DESIGN_SYSTEM → Form System).
-// Replaces the old inline-expanding panel — nothing expands in place any more, so
-// there is no layout push, no pan, and no sub-pixel text blur.
+// The Form System's `›` trigger: label + a field's CURRENT value. Opens a
+// PickerDropdown for bounded content or pushes a screen for unbounded content
+// (DESIGN_SYSTEM → Form System). Nothing expands in place, so opening one never
+// moves the layout.
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
 

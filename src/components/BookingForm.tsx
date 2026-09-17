@@ -7,17 +7,9 @@
 // dates being submitted (the prop only covers the calendar's visible week) — the
 // database's exclude constraint is still the final source of truth.
 //
-// ── Form System (2026-08) ────────────────────────────────────────────────────
-// Rendered through <FormShell> as a STACK OF SCREENS (see DESIGN_SYSTEM → Form
-// System). The frame NEVER resizes — not between screens, not when the keyboard
-// opens — and screens crossfade on opacity alone. Date/time pickers are pushed
-// SUB-SCREENS (a value FieldRow shows the current value and pushes a full-frame
-// calendar/wheel), which replaced the old inline-expanding panels: no layout push,
-// no scroll pan, no sub-pixel text blur.
-//
-// All scheduling logic below — conflict detection, recurrence, the open-seed, the
-// duration/end derivation and the Turnstile machine — is unchanged from the FLIP
-// era; only the presentation moved.
+// Rendered through <FormShell> as a stack of screens (form → review → verify);
+// the frame never resizes and pickers are FieldRow › PickerDropdown overlays.
+// DESIGN_SYSTEM → Form System; this form is that system's reference implementation.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -39,7 +31,7 @@ import { TimeWheel } from "@/components/ui/time-wheel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { getErrorMessage } from "@/lib/errors";
 import { sanitizeDisplayText, stripHtmlText } from "@/lib/sanitize";
-import { containsLink } from "@/lib/text-guard";
+import { containsLink } from "../../supabase/functions/_shared/text-guard.ts";
 import { useI18n } from "@/hooks/useI18n";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useInvalidFieldFocus } from "@/hooks/useInvalidFieldFocus";
@@ -72,8 +64,7 @@ const MAX_HORIZON_MONTHS = 18;
 const MAX_PUBLIC_SESSIONS = 60;
 const MAX_ADMIN_SESSIONS = 366;
 const MAX_SESSION_DAYS = 7;
-// Hand-picked dates are one session each, so the pick cap IS the session cap —
-// it was 10 for a while, which turned away requests the server would have taken.
+// Hand-picked dates are one session each, so the pick cap IS the session cap.
 const MAX_PICK_DATES = MAX_PUBLIC_SESSIONS;
 // Title and name (DB constraint + both RPCs agree on 100).
 const TEXT_FIELD_MAX_CHARS = 100;
@@ -88,10 +79,9 @@ type DatesMode = "single" | "repeat" | "pick";
 // Which inline picker dropdown is open, if any.
 type PickerKind = "date" | "repeatUntil" | "start" | "endDate" | "endTime" | "pickDates";
 
-// Booking colours are assigned at random from this palette on create — the swatch
-// picker was removed (bookers didn't use it), so a colour is now just calendar
-// decoration. One colour per submission, so a whole weekly/multi-date series stays
-// one colour (edits keep the existing colour untouched).
+// Booking colours are assigned at random from this palette on create — calendar
+// decoration, not a choice. One colour per submission, so a whole weekly/multi-date
+// series stays one colour (edits keep the existing colour untouched).
 const BOOKING_COLORS: [number, number, number][] = [
   [180, 140, 200], [231, 111, 81], [233, 196, 84], [138, 154, 91],
   [70, 150, 158], [90, 100, 180], [217, 130, 165], [120, 85, 72],
@@ -123,10 +113,8 @@ interface Props {
 // Monday-first display order for the weekly-day picker (JS getDay values).
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
-// Only "weekly" remains as a pattern — "daily" and "monthly" were retired
-// (multi-date pick covers consecutive/sparse days; weekly is the one pattern that
-// genuinely needs recurrence). The DB enum still accepts the old values for any
-// legacy rows; the app just never creates them.
+// Weekly is the only pattern (multi-date pick covers consecutive/sparse days). The
+// DB enum still accepts "daily"/"monthly" for legacy rows; the app never creates them.
 type Recurrence = "none" | "weekly";
 // Turnstile sub-flow stages: loading (script) → challenge (widget shown) → verified
 // (token in hand) → submitting → success | error.
@@ -687,7 +675,7 @@ export const BookingForm = ({ open, onClose, approvedBookings, onSubmitted, edit
     if (cleanInfo.length > BOOKING_INFO_MAX_CHARS) nextErrors.info = t("validation.infoMax");
     // Links are blocked on the public request only (admin/edit are trusted). The
     // Edge Function re-checks server-side — this is the inline UX mirror. See
-    // src/lib/text-guard.ts for why (Telegram auto-linkifies bare URLs/@handles).
+    // _shared/text-guard.ts for why (Telegram auto-linkifies bare URLs/@handles).
     if (!adminMode && !isEdit) {
       if (!nextErrors.title && containsLink(cleanTitle)) nextErrors.title = t("validation.noLinks");
       if (!nextErrors.name && containsLink(cleanName)) nextErrors.name = t("validation.noLinks");
@@ -1718,8 +1706,8 @@ const BookingReviewStep = ({
           </div>
 
           {/* Hero type. The oversized size + tight tracking is the sanctioned
-              editorial exception (DESIGN_SYSTEM → Confirmation screen), the same
-              licence ConsentGate's title takes. Outfit, never Fraunces. */}
+              editorial exception (DESIGN_SYSTEM → Confirmation screen). Outfit,
+              never Fraunces. */}
           <p className="mt-1 text-[clamp(3.75rem,22vw,5.5rem)] font-bold leading-[0.85] tracking-[-0.04em] tabular-nums text-foreground">
             {heroNumber}
           </p>

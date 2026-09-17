@@ -114,6 +114,8 @@ export const hashSubject = async (subject: string) => {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
+// A coarse input scrub, not the display guard: the client renders through
+// sanitizeDisplayText and Telegram through escapeHtml regardless of this.
 export const stripHtmlText = (value: unknown) => (
   typeof value === "string" ? value.replace(/<[^>]*>/g, "").trim() : ""
 );

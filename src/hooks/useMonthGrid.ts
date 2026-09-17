@@ -5,8 +5,7 @@ import type { getDateLocale } from "@/lib/date";
 // ── Month grid ───────────────────────────────────────────────────────────────
 // The single source for BOTH calendars (CalendarPanel's single-date picker and
 // MonthDatePicker's pick-dates grid): a 6-week day list and the weekday header
-// labels. They used to compute this independently, which meant the Sunday-first
-// switch had to be made twice — exactly the drift this prevents.
+// labels, so the two calendars cannot drift.
 //
 // Sunday-first is a display preference only. It is deliberately NOT tied to the app's
 // Mon–Sun booking-week logic (getWeekDays / the SGT Telegram board in booking-utils):

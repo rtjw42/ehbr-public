@@ -43,11 +43,8 @@ export const preloadContactsForm = preload(loadContactsForm);
 export const preloadMediaSetlistForm = preload(loadMediaSetlistForm);
 
 // Lazy components, defined here so a form opened from two pages is one component
-// identity (and one chunk request) rather than two. All five live here: BookingForm's
-// used to sit in its own `components/LazyBookingForm.tsx`, left over from the deleted
-// `lib/booking-form-loader.ts` it was written against — so `/bookings` imported the
-// component from one module and its preload from another, which is exactly the split
-// this file exists to close.
+// identity (and one chunk request) rather than two, and so a form's `lazy()` and
+// its preload can never be split across modules.
 export const LazyBookingForm = lazy(loadBookingForm);
 export const LazyEventForm = lazy(loadEventForm);
 export const LazyBacklineForm = lazy(loadBacklineForm);

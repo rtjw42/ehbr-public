@@ -37,10 +37,8 @@ export const navPanelTransition = {
 } as const;
 
 // The ONE height-glide timing. Its sole consumer is <Resize> (ui/resize.tsx),
-// which DayDetailDialog keeps for its view swaps — the last height animation in
-// the app, by design (DESIGN_SYSTEM → Motion). Everything else that once shared
-// this token is gone: the centring pan and `animate-scroll.ts` with the FLIP
-// picker family, `Collapse` on 2026-09-15.
+// which DayDetailDialog keeps for its view swaps — the only height animation
+// outside the nav's panel morph, by design (DESIGN_SYSTEM → Motion).
 //
 // Symmetric in-out curve (NOT the ease-out enter): a box morphing its height
 // carries the eye across a distance and reads smoother accelerating from rest
@@ -117,6 +115,24 @@ export const splashLogoEntrance = {
 export const splashCtaEntrance = {
   hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.5, ease: motionEase.enter } },
+} as const;
+
+// The `›` after the splash affordance nudges right and back, forever.
+export const splashCtaNudge = {
+  animate: { x: [0, 3, 0] },
+  transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut" as const },
+};
+
+// The gate's exits, opacity only: a step (splash → setup → legal) fades out
+// fast; the whole gate fades out under the app once consent is given.
+export const consentStepExit = {
+  opacity: 0,
+  transition: { duration: motionDurations.fast },
+} as const;
+
+export const consentGateExit = {
+  opacity: 0,
+  transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
 } as const;
 
 export const buttonPressClass = "active:scale-[0.97] active:duration-100";

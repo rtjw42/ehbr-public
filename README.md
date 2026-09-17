@@ -6,53 +6,36 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/rtjw42/ehbr-public/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/rtjw42/ehbr-public/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![Live](https://img.shields.io/badge/live-ehbandits.com-2ea44f?style=flat-square)](https://ehbandits.com)
 
-![React](https://img.shields.io/badge/React-20232a?style=flat-square&logo=react&logoColor=61dafb)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646cff?style=flat-square&logo=vite&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?style=flat-square&logo=supabase&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
-
-[What it does](#what-it-does) · [Why it works this way](#why-it-works-this-way) · [Quick start](#quick-start) · [Deploy your own](#deploy-your-own) · [Security](#security-model)
+**[ehbandits.com](https://ehbandits.com)** · [What it does](#what-it-does) · [Why it works this way](#why-it-works-this-way) · [Quick start](#quick-start) · [Deploy your own](#deploy-your-own) · [Security](#security-model)
 
 </div>
 
-<br>
-
-![The landing page](docs/screenshots/home-page.webp)
+![The weekly booking calendar](docs/screenshots/booking-calendar.webp)
 
 Members reserve the band room from their phones, see what's coming up, and check what gear
 is in the room. Admins approve requests and manage the content inside the same app, behind
-a login. I built it for the band at my hall, and it is in daily use at
-[ehbandits.com](https://ehbandits.com).
-
-This is a personal project. It is not an official Eusoff Hall or NUS platform.
+a login. Built for the band at my hall — a personal project, not an official Eusoff Hall
+or NUS platform.
 
 <table align="center">
   <tr>
-    <td align="center" width="50%"><img src="docs/screenshots/booking-calendar.webp" alt="Weekly booking calendar"></td>
     <td align="center" width="50%"><img src="docs/screenshots/booking-form.webp" alt="Booking request form with the date picker open"></td>
+    <td align="center" width="50%"><img src="docs/screenshots/event-detail.webp" alt="Event detail with poster"></td>
   </tr>
   <tr>
-    <td align="center"><sub>The weekly calendar, updating live as bookings are approved</sub></td>
     <td align="center"><sub>Requesting a slot: one day, weekly, or a set of picked dates</sub></td>
+    <td align="center"><sub>An event with its poster; media and setlist open from here</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/admin-queue.webp" alt="Admin approval queue"></td>
-    <td align="center"><img src="docs/screenshots/event-detail.webp" alt="Event detail with poster"></td>
+    <td align="center"><img src="docs/screenshots/dark-mode.webp" alt="The calendar in dark mode"></td>
   </tr>
   <tr>
     <td align="center"><sub>The admin queue, where requests are approved or rejected</sub></td>
-    <td align="center"><sub>An event with its poster, setlist, and media</sub></td>
+    <td align="center"><sub>The same calendar in dark mode</sub></td>
   </tr>
 </table>
-
-![The same calendar in dark mode](docs/screenshots/dark-mode.webp)
-
-<sub>Screenshots are from the live site. The repository ships neutral placeholder images in
-place of the band's photographs, so a fresh clone looks a little different.</sub>
 
 ## What it does
 
@@ -96,8 +79,6 @@ It has to stay on free tiers. Reads are bounded, a scheduled ping keeps the Edge
 warm, realtime is used only on the screens that need it, and usage is checked against the
 actual quotas. The free database plan takes no backups, so a nightly job of my own does.
 
-<br>
-
 ---
 
 <div align="center">
@@ -111,22 +92,20 @@ Everything below is for running or deploying the code yourself.
 
 </div>
 
----
-
 ## Architecture
 
 ```
 React + Vite SPA (TypeScript, Tailwind)
 │
-├─ Supabase Auth          admin sessions, invite-code registration
-├─ Supabase Postgres      all data, row-level security on every table
-├─ Supabase Realtime      live updates on the calendar and content pages
-├─ Supabase Storage       event posters, backline files
-└─ Supabase Edge Funcs    public form validation, privileged writes
+├─ Supabase Auth            admin sessions, invite-code registration
+├─ Supabase Postgres        all data, row-level security on every table
+├─ Supabase Realtime        live updates on the calendar and content pages
+├─ Supabase Storage         event posters, backline files
+└─ Supabase Edge Functions  public form validation, privileged writes
 
-Vercel                    static hosting
-Cloudflare Turnstile      bot check on every public form
-Resend                    custom SMTP for auth email (optional)
+Vercel                      static hosting
+Cloudflare Turnstile        bot check on every public form
+Resend                      custom SMTP for auth email (optional)
 ```
 
 Two rules keep the codebase easy to read:
@@ -156,8 +135,8 @@ account for this: Turnstile publishes test keys that always pass.
 **1. Clone and install**
 
 ```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/rtjw42/ehbr-public.git
+cd ehbr-public
 npm install
 cp .env.example .env.local
 ```
@@ -165,8 +144,8 @@ cp .env.example .env.local
 `npm install` also sets up a pre-commit hook (Husky) that runs `eslint --fix` on staged
 `.ts` and `.tsx` files.
 
-**2. Fill in three values** in `.env.local`. The first two are in your Supabase dashboard
-under Project Settings → API. The third is Cloudflare's public test key.
+**2. Fill in three values** in `.env.local`. The first two are in your Supabase project's
+settings, under the API keys. The third is Cloudflare's public test key.
 
 ```ini
 VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
@@ -183,11 +162,12 @@ supabase db push
 npm run dev
 ```
 
-The app is at <http://localhost:8080>.
+Vite prints the URL: <http://localhost:8080> by default, or the next free port if that one
+is taken.
 
 > [!NOTE]
-> A fresh database has no events or backline content, so those pages start empty. Nothing
-> is broken; content appears once an admin adds it.
+> A fresh database has no events or backline content, so those pages start empty until an
+> admin adds some.
 >
 > **Submitting a booking will not work yet.** Public writes go through Edge Functions that
 > are not deployed. The next section covers that.
@@ -207,15 +187,16 @@ supabase secrets set TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 supabase secrets set RATE_LIMIT_SALT=<random-32-char-string>
 supabase secrets set SITE_URL=https://your-domain.example
 supabase secrets set ALLOWED_ORIGINS=https://your-domain.example,https://www.your-domain.example,http://localhost:8080
+# last entry: your local dev origin, exactly as Vite printed it
 ```
 
 The Turnstile value above is the test secret that pairs with the test site key. Swap both
 for real ones from your own widget before going live.
 
-`ALLOWED_ORIGINS` is the CORS allow-list for the public functions. Keep
-`http://localhost:8080` in it while you are developing and drop it before launch. If it is
-unset the functions fall back to `SITE_URL`, and if both are unset every request is
-rejected.
+`ALLOWED_ORIGINS` is the CORS allow-list for the public functions. Keep your local dev
+origin in it while you are developing and drop it before launch. The match is exact, so
+the port matters. If it is unset the functions fall back to `SITE_URL`, and if both are
+unset every request is rejected.
 
 ### 2. Deploy the Edge Functions
 
@@ -259,19 +240,19 @@ Any SMTP provider works.
 **Cron jobs.** `supabase db push` scheduled four `pg_cron` jobs: a five-minute ping that
 keeps the public functions warm, the Telegram board's drain and weekly rollover, and a
 daily purge of cron history. The warm-up and Telegram jobs do nothing until the matching
-secrets exist in Supabase Vault, so they are safe to leave alone.
+secrets exist in Supabase Vault. The warm-up is worth enabling on a free project: besides
+hiding cold starts, the steady traffic helps keep the project from pausing for inactivity.
 
 <details>
 <summary>Turn on the warm-up ping</summary>
 
-<br>
-
-Set an Edge secret, redeploy the three public functions, then store the same token in
-Vault along with your project URL and anon key (SQL editor):
+Set an Edge secret and redeploy the functions, then store the same token in Vault along
+with your project URL and anon key (SQL editor):
 
 ```bash
 supabase secrets set WARMUP_SECRET=<random-32-char-token>
-supabase functions deploy submit-booking register-admin request-password-reset
+supabase functions deploy submit-booking register-admin request-password-reset \
+  upload-admin-file set-staff-ban telegram-weekly
 ```
 
 ```sql
@@ -318,7 +299,7 @@ Project Settings → Environment Variables, and deploy.
 | Variable | Required | Purpose |
 | --- | :---: | --- |
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase anon key |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase publishable (anon) key |
 | `VITE_TURNSTILE_SITE_KEY` | Yes | Turnstile site key (public) |
 | `VITE_CONTACT_EMAIL` | Recommended | Address shown in the privacy policy for data requests |
 | `VITE_SENTRY_DSN` | No | Client error monitoring, production only |
@@ -335,8 +316,6 @@ Project Settings → Environment Variables, and deploy.
 
 <details>
 <summary><b>Telegram</b> · all optional</summary>
-
-<br>
 
 | Variable | Purpose |
 | --- | --- |
@@ -356,7 +335,7 @@ platform. Do not set them yourself.
 
 | Command | Does |
 | --- | --- |
-| `npm run dev` | Dev server on port 8080 |
+| `npm run dev` | Dev server, port 8080 by default |
 | `npm run build` | Production build |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint |
@@ -373,14 +352,14 @@ CI runs `typecheck`, `lint`, `test:coverage`, and `build` on every push, then
 | You see | Why | Fix |
 | --- | --- | --- |
 | A **Configuration needed** page | A `VITE_*` value is missing | Fill in `.env.local` (or the host's env) and restart |
-| Booking fails and the browser console shows a CORS error | Your origin is not in `ALLOWED_ORIGINS` | Add it, including `http://localhost:8080` while developing, and redeploy the functions |
+| Booking fails and the browser console shows a CORS error | Your origin is not in `ALLOWED_ORIGINS` | Add it, including your local dev origin (scheme, host, and port, exactly as Vite printed it) while developing, and redeploy the functions |
 | "Verification failed or expired" on every booking | Turnstile site key and secret are from different widgets, or a test key is paired with a real secret | Use a matching pair |
 | Registration or reset email never arrives | Supabase's built-in sender is rate-limited | Check the Auth logs in the Supabase dashboard, then set custom SMTP |
 | A function still behaves like the old code after a deploy | Only some functions were redeployed | Deploy all six together |
 
 ## Security model
 
-Public forms, narrow write access.
+The app exposes public forms while keeping write access narrow.
 
 - **Row-level security on every table.** Anonymous reads are limited to safe columns, and
   every select carries an explicit limit.
@@ -389,19 +368,22 @@ Public forms, narrow write access.
   the payload. Every other write is tightly filtered, goes through an RPC, or goes through
   an Edge Function.
 - **Server-side authorization.** Admin actions re-verify the live session and role against
-  the database on every call. Frontend state is never trusted on its own, and privileged
-  RPCs are `SECURITY DEFINER` with execute revoked from the anonymous and authenticated
-  roles.
-- **Minimal data collection.** A public booking captures a session title and a display
-  name. No contact details, no personal identifiers. The only place those two fields go is
-  the band's private Telegram group, when a booking is approved, so the shared schedule
-  stays current. Rate limiting stores a salted hash of the submitter's IP, never the
-  address, and drops it after 24 hours.
-- **Hardened client.** A Content Security Policy with no inline scripts, and no `innerHTML`
-  or `eval` anywhere in the source. Admin tokens sit behind a storage adapter with a 14-day
-  idle timeout.
+  the database on every call. Frontend state is never trusted on its own. Every RPC that
+  reads or writes data has execute revoked from the anonymous role; the public submission
+  path runs as `SECURITY DEFINER` behind an Edge Function, and admin RPCs re-check the
+  caller's role in the function body or through row-level security.
+- **Minimal data collection.** A public booking captures a session title, a display name,
+  and an optional notes field. No contact details, no personal identifiers. The only place
+  those fields go outside the database is Telegram, if it is configured: when a request is
+  submitted, its title, name and notes go to a private admin chat for review, and once it is
+  approved, the title and name appear on a weekly board in the band's private group so the
+  shared schedule stays current. Rate limiting stores a salted hash of the submitter's IP,
+  never the address, and drops it after 24 hours.
+- **Hardened client.** A Content Security Policy with no inline scripts, no `eval`, and no
+  `innerHTML` on anything but a constant first-run setup page. Admin tokens sit behind a
+  storage adapter with a 14-day idle timeout.
 - **Encrypted backups.** Every copy is encrypted with a passphrase before it is stored
-  anywhere, and is unreadable without it. Details under [Backups](#backups).
+  anywhere. Details under [Backups](#backups).
 
 ## Backups
 
@@ -411,13 +393,11 @@ every table is present and that the ones which are never empty actually have row
 the archive with a GPG passphrase, and stores it in two places: as a workflow artifact for
 90 days, and as a commit on an orphan `backups` branch that is never pruned. The same run
 mirrors the two Storage buckets. A restore is a paste into the SQL editor, and both the
-whole-database and single-table paths have been used for real. A red run emails me, which
-is the alarm for the most likely failure: the free-tier project pausing itself.
+whole-database and single-table paths have been used for real. A failed run emails the
+owner, which is the alarm for the most likely failure: the free-tier project pausing itself.
 
 <details>
 <summary>More detail</summary>
-
-<br>
 
 - The dump holds roles, schema, and every table's rows as plain `INSERT` statements, plus
   a manifest recording the commit and latest migration at dump time. A night's copy is
@@ -444,8 +424,6 @@ recurrence expansion, auth and role checks, text sanitization, message formattin
 error boundary that decides which server messages a caller may see. That is where the
 logic worth protecting is, so that is where the tests are.
 
-Dependabot batches minor and patch updates weekly on the working branch.
-
 ## Design
 
 A warm, textured palette in light and dark mode. Color, spacing, motion, and typography
@@ -461,7 +439,5 @@ a desktop.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-The code is MIT licensed. The band's name, logo, icons, and photographs are not. Replace
-the assets in `public/` and `src/assets/` if you deploy your own copy.
+MIT, see [LICENSE](LICENSE). The band's name, logo, icons, and photographs are not covered
+by it; replace the assets in `public/` and `src/assets/` if you deploy your own copy.

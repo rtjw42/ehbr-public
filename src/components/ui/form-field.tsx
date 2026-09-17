@@ -2,11 +2,6 @@
 // The Form System's field wrapper: label row (with an optional character counter
 // on the right), the control, and the error line beneath it.
 //
-// This exists because the same three-part stack was hand-written in every form,
-// and had drifted — `space-y-1.5` in some places and a bare `<div>` in others,
-// `mt-1` on some error lines and not others, and `aria-describedby` wired on some
-// fields but not all.
-//
 // ── The association is published, not requested ───────────────────────────────
 // Deriving the error id from the field id guarantees the id EXISTS; it does not
 // guarantee any control points at it, and that distinction cost us: callers wired

@@ -3,13 +3,8 @@
 // (see DESIGN_SYSTEM.md → Form System). The form scrolls to the first invalid
 // field and puts the cursor in it, so a refused save always ends with the problem
 // on screen and focused — never a button that appears to do nothing.
-//
-// Lifted verbatim out of BookingForm, which was the only form in the app that did
-// this. EventForm, BacklineForm, ContactsForm and the old MediaSetlistEditor all
-// showed their message wherever it happened to sit and left the user to find it —
-// the setlist editor could even render it inside a collapsed section, i.e. nowhere.
-// Every form is on this now; MediaSetlistForm pushes the screen the bad field
-// lives on first, then calls this once that screen has committed.
+// MediaSetlistForm pushes the screen the bad field lives on first, then calls
+// this once that screen has committed.
 //
 // The scroll container is found from the field itself (`[data-form-body]`, which
 // FormShell marks and PickerDropdown already measures against) rather than passed

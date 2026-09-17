@@ -18,7 +18,7 @@ import {
 beforeEach(() => resetSupabaseMock());
 
 describe("event service helpers", () => {
-  it("builds an event payload from draft values, omitting media/setlist when absent", () => {
+  it("builds an event payload from draft values and never includes media/setlist", () => {
     const payload = buildEventPayloadFromDraft({
       title: "Test Event",
       description: "Just a test",
@@ -29,8 +29,8 @@ describe("event service helpers", () => {
       posterUrl: "https://example.com/poster.jpg",
     });
 
-    // No media/setlist keys when the draft omits them — so a basics-only edit never
-    // overwrites an event's existing media/setlist jsonb columns.
+    // No media/setlist keys, ever — so a basics edit never overwrites the jsonb
+    // columns that updateEventMedia owns.
     expect(payload).toEqual({
       title: "Test Event",
       description: "Just a test",
@@ -41,27 +41,6 @@ describe("event service helpers", () => {
     });
     expect("media" in payload).toBe(false);
     expect("setlist" in payload).toBe(false);
-  });
-
-  it("validates and strips media/setlist when building the payload", () => {
-    const payload = buildEventPayloadFromDraft({
-      title: "Gig",
-      description: "",
-      location: "",
-      eventDate: "2026-05-08",
-      eventTime: "19:00",
-      posterUrl: null,
-      media: [
-        { type: "youtube", url: "https://youtu.be/dQw4w9WgXcQ" },
-        { type: "photo_album", url: "javascript:alert(1)" },
-      ],
-      setlist: [
-        { title: "Song A", spotify: "https://open.spotify.com/track/1", apple: "not-a-url" },
-      ],
-    });
-
-    expect(payload.media).toEqual([{ type: "youtube", url: "https://youtu.be/dQw4w9WgXcQ" }]);
-    expect(payload.setlist).toEqual([{ title: "Song A", spotify: "https://open.spotify.com/track/1" }]);
   });
 
   it("strips HTML and coerces blank optional fields to null", () => {

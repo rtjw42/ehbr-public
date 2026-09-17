@@ -1,41 +1,12 @@
 // ── PickerDropdown ───────────────────────────────────────────────────────────
-// The form's inline picker surface — the slide-down, done properly.
-//
-// ── What the old inline picker got wrong ─────────────────────────────────────
-// It grew a SPACER (0→H, shoving every field below it down) and PANNED the
-// scroller to fit. The pan is what dragged a field's own label out of view, and
-// it only fired near the bottom, so some fields did it and some didn't.
-//
-// ── The model here ───────────────────────────────────────────────────────────
-// 1. The panel OVERLAYS. No spacer, so opening changes no layout: nothing above
-//    the trigger moves, and nothing for iOS Low Power to cap.
-// 2. It ALWAYS opens downward. No flip-up — a panel that sometimes appears above
-//    and sometimes below is disorienting, and upward panels cover the label.
-// 3. To guarantee the whole panel fits, the form SCROLLS by the minimum needed —
-//    and that scroll is hard-capped so the trigger's label can never reach the top
-//    edge. So the field you're editing and its label are always on screen; only
-//    the content below moves. This is the "pan" done right: minimal, one
-//    direction, and bounded by the thing the user must keep seeing.
-// 4. CLOSING NEVER MOVES THE PAGE. The panel is out of flow, so it never changed
-//    the page height to begin with; an earlier version borrowed temporary bottom
-//    padding to guarantee scroll room and *that* release was the jump. Instead the
-//    form body carries a small permanent bottom spacer (FormShell) — nothing to
-//    add, nothing to release, nothing to clamp.
-// 5. IT CAN NEVER BE CUT OFF. The panel's max height is ALWAYS clamped to the room
-//    actually visible below the trigger, and it re-fits whenever its own content
-//    changes height. That last part matters more than it sounds: the multi-date
-//    grid is lazy-loaded, so a first open measures the Suspense fallback rather
-//    than the real calendar, and navigating months swaps a 5-week grid for a
-//    6-week one. Both used to leave the panel overflowing the body's bottom edge.
-//
-// 6. WHEN IT DOES SCROLL, IT SAYS SO. The clamp in (5) means a panel with a long
-//    list — ContactsForm's five networks, opened from a row near the bottom — is
-//    legitimately shorter than its content. It carries the same scroll-progress
-//    bar the dialog bodies use (ui/scroll-fade), pinned to its bottom edge and
-//    invisible until there is something to scroll, so a clipped list reads as
-//    "more below" rather than as the list ending there. That is why the panel is
-//    an outer frame plus an inner scroller: an absolutely-positioned bar inside a
-//    scroll container scrolls away with the content.
+// The form's inline picker surface. Implements DESIGN_SYSTEM → Form System →
+// Pickers: the panel overlays (no spacer, no layout change), always opens
+// downward, scrolls the form by the minimum needed with a cap that keeps the
+// trigger's label on screen, clamps its height to the room below the trigger and
+// re-fits when its content changes height (lazy grid, 5↔6-week months), and
+// shows the dialogs' ScrollFadeBar when clamped — which is why it is an outer
+// frame around an inner scroller. FormShell's permanent bottom spacer means
+// closing never moves the page.
 //
 // Motion is the panel's own clipped slide + fade — transform/opacity only, so text
 // never sits mid-translate and never resamples.
@@ -258,8 +229,8 @@ export function PickerDropdown({ open, onClose, anchorRef, children, ariaLabel, 
     return () => window.clearTimeout(id);
   }, [shown]);
 
-  // Outside pointer / Escape dismiss. Safe here (unlike the old inline panel):
-  // values commit live as you pick or spin, so dismissing never discards an edit.
+  // Outside pointer / Escape dismiss. Safe: values commit live as you pick or
+  // spin, so dismissing never discards an edit.
   React.useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
@@ -305,10 +276,9 @@ export function PickerDropdown({ open, onClose, anchorRef, children, ariaLabel, 
           role="dialog"
           aria-modal={false}
           aria-label={ariaLabel}
-          // `!== undefined`, NOT a truthiness test: `fit` floors at 0, and a field
-          // with no room below it produced maxHeight === 0 — falsy, so the clamp
-          // was dropped entirely and the panel rendered at full height, spilling
-          // past the body's bottom edge. Exactly the clipping this clamp prevents.
+          // `!== undefined`, not a truthiness test: `fit` floors at 0, and a field
+          // with no room below it yields maxHeight 0 — falsy, which would drop the
+          // clamp and let the panel spill past the body's bottom edge.
           style={maxHeight !== undefined ? { maxHeight } : undefined}
           data-picker-panel=""
           // The frame: it holds the clamp, the padding and the chrome, and it does

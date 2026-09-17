@@ -13,16 +13,13 @@
 //     JPEG instead of a HEIC the browser cannot decode.
 //
 // ── ONE FIXED HEIGHT, both states ────────────────────────────────────────────
-// The box is the same height empty and filled. That is the point: the old poster
-// field was a short `py-8` dropzone that became a 16rem preview, so adding or
-// removing a poster resized the form under the user's thumb — the exact thing the
-// Form System exists to prevent. Callers set the height once via `className`.
+// The box is the same height empty and filled, so picking or removing a file never
+// resizes the form under the user's thumb. Callers set the height once via
+// `className`.
 //
-// `fit` replaces what PLANS called `crop?: 1 | false` — the caller isn't choosing
-// a crop, it is choosing how the preview is framed. Posters are square by the time
-// they arrive, so they fill the box (`cover`); backline gear photos and rate cards
-// arrive at whatever aspect the admin uploaded and must not be silently trimmed
-// (`contain`).
+// `fit` says how the preview is framed: posters are square by the time they arrive,
+// so they fill the box (`cover`); backline gear photos and rate cards arrive at
+// whatever aspect the admin uploaded and must not be silently trimmed (`contain`).
 import * as React from "react";
 import { FileText, Upload } from "lucide-react";
 

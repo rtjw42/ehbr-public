@@ -1,6 +1,5 @@
 // ── Resize ───────────────────────────────────────────────────────────────────
-// THE height-glide primitive (Phase M2.5 — the "resize style" restored). A box
-// whose height genuinely animates: 0 → natural on show, natural → 0 on hide
+// THE height-glide primitive. A box whose height genuinely animates: 0 → natural on show, natural → 0 on hide
 // (delayed unmount), and old → new when `dep` changes (a declared content swap,
 // e.g. a keyed step/view/mode switch inside).
 //
@@ -16,12 +15,10 @@
 //     state is auto.
 //   • Content inside may crossfade (keyed motion.div, opacity only) — the pair
 //     reads as one gesture.
-//   • Expand-from-nothing is NOT a height glide any more. <Collapse> (grid-rows
-//     0fr↔1fr) was deleted 2026-09-15 — its last caller, the public setlist,
-//     re-laid-out 30 rows a frame and stuttered on phones. A disclosure now
-//     commits its layout once and reveals on transform/opacity
-//     (`.disclosure-reveal`, animations.css). This file is the only height
-//     animation left, by design (DESIGN_SYSTEM → Motion).
+//   • Expand-from-nothing is NOT a height glide. A disclosure commits its layout
+//     once and reveals on transform/opacity (`.disclosure-reveal`, animations.css).
+//     This file is the only height animation outside the nav's panel morph, by
+//     design (DESIGN_SYSTEM → Motion).
 //
 // Rule #1 intact (per-frame values never pass through React state): the glide
 // is a CSS `transition: height` — the browser interpolates; React only sets

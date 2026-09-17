@@ -58,7 +58,7 @@ export const DayBox = memo(({ day, bookingItems, dayEvents = [], onClick, editab
           <div className="font-display type-badge uppercase tracking-widest text-muted-foreground font-medium">
             {format(day, "EEE", { locale: dateLocale })}
           </div>
-          <div className="font-display text-[clamp(2.25rem,9vw,3rem)] leading-none tracking-tight text-foreground">
+          <div className="font-display type-day-number leading-none tracking-tight text-foreground">
             {format(day, "d", { locale: dateLocale })}
           </div>
         </div>
@@ -103,7 +103,7 @@ export const DayBox = memo(({ day, bookingItems, dayEvents = [], onClick, editab
               )}
               <div className="min-w-0 flex-1">
                 <div className="truncate type-chip font-semibold leading-tight">{sanitizeDisplayText(ev.title)}</div>
-                <div className="truncate text-[clamp(0.6rem,1.8vw,0.68rem)] text-muted-foreground tabular-nums">
+                <div className="truncate type-day-caption text-muted-foreground tabular-nums">
                   {formatClockTime(new Date(ev.event_date), language)}
                   {ev.location && <> · <span className="truncate">{sanitizeDisplayText(ev.location)}</span></>}
                 </div>

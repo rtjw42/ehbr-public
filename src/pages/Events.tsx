@@ -18,6 +18,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 import { formatDateAtTime, formatLocalizedDate } from "@/lib/date";
 import { hasMediaContent, type EventItem } from "@/lib/events";
 import { sanitizeDisplayText } from "@/lib/sanitize";
@@ -96,7 +97,7 @@ const Events = () => {
       setPendingDelete(null);
       await load();
     } catch (error: unknown) {
-      toast.error(error instanceof TypeError ? t("common.networkIssue") : error instanceof Error ? error.message : t("common.couldNotDelete"));
+      toast.error(error instanceof TypeError ? t("common.networkIssue") : getErrorMessage(error, t("common.couldNotDelete")));
       await load();
     } finally {
       setDeletingEventId(null);

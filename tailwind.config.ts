@@ -90,7 +90,6 @@ export default {
         },
         interactive: {
           DEFAULT: "var(--interactive-bg)",
-          hover: "var(--interactive-bg-hover)",
           text: "var(--interactive-text)",
           border: "var(--interactive-border)",
         },

@@ -1,17 +1,11 @@
 // ── Dialog scroll progress (imperative) ──────────────────────────────────────
 // The thin bar that tracks how far a dialog body is scrolled, shared by
-// dialog.tsx and alert-dialog.tsx (which had drifted apart — the alert copy
-// still transitioned `transform`, the exact scaleX lag the dialog version's
-// comment warns against).
+// dialog.tsx, alert-dialog.tsx and PickerDropdown.
 //
-// Phase M rule: per-frame values never pass through React state. The old
-// version routed progress through context state (two setStates per scroll
-// tick), which re-rendered the dialog chrome on EVERY scroll frame — and on
-// every content-resize frame, because the ResizeObserver here watches the
-// scroll body's children. Now the writer paints progress straight onto the
-// bar node — a CSS variable for the scaleX plus a data-scrollable flag for
-// the fade — rAF-throttled. The context value is a stable ref object, so
-// React renders nothing at all while scrolling or resizing.
+// Rule #1 (per-frame values never pass through React state): the writer paints
+// progress straight onto the bar node — a CSS variable for the scaleX plus a
+// data-scrollable flag for the fade — rAF-throttled. The context value is a
+// stable ref object, so React renders nothing while scrolling or resizing.
 import * as React from "react";
 
 import { cn } from "@/lib/utils";

@@ -5,32 +5,12 @@
 // Writes go through updateEventMedia after the admin session is re-verified; the
 // service re-validates/strips on the way in.
 //
-// Named `*Form`, not `*Editor`: the suffix says which shell a modal is built on,
-// and this is `FormShell` (DESIGN_SYSTEM.md → Form System → Placement). It was
-// `MediaSetlistEditor` while it was still on the raw Radix dialog, and the last
-// form in the app to leave it.
-//
-// ── What the port changed ────────────────────────────────────────────────────
-// 1. THE TWO ⌄ SECTIONS ARE GONE, and with them the one live defect this form
-//    had: both sections started closed, the error line rendered INSIDE them, and
-//    Save returned without opening, scrolling or focusing anything — so a bad URL
-//    behind a collapsed section made Save look dead. There is nothing to collapse
-//    now. Media and Setlist are pushed SCREENS off a root that shows their counts,
-//    and a refused save pushes the screen the bad field lives on (see `save`).
-// 2. Per-song streaming links moved to a PER-SONG screen. A setlist is pasted in
-//    bulk and titles are what get edited, so those stay inline; the three links
-//    per song were 90 inputs on one scroll at the cap, and are now three fields
-//    behind a `›`.
-// 3. Paste-from-Telegram is a pushed screen, not a dropdown: a tall textarea plus
-//    a Parse action summons the keyboard, and a keyboard opening under an anchored
-//    dropdown is the one case fit-by-scrolling cannot solve.
-// 4. Errors are PER ROW, keyed by uid, beneath the bad input — the section-level
-//    string could only ever point at one row and never at which.
-// 5. The stable frame, the keyboard translate and the shared footer buttons are
-//    all inherited from FormShell.
-//
-// Untouched: the validation rules (`parseYouTubeId`, `isSafeHttpUrl`), the three
-// caps, `parseSetlistText`, `updateEventMedia`, and the open-reset.
+// On FormShell (DESIGN_SYSTEM.md → Form System). Media and Setlist are pushed
+// screens off a root that shows their counts; each song's streaming links are a
+// per-song screen behind `›`; Paste-from-Telegram is a pushed screen because its
+// textarea summons the keyboard, which an anchored dropdown cannot fit around.
+// Errors are per row, keyed by uid, and a refused save pushes the screen the bad
+// field lives on (see `save`).
 import { useLayoutEffect, useRef, useState } from "react";
 import { ClipboardList, Images, ListMusic, Loader2, Plus, Video } from "lucide-react";
 import { toast } from "sonner";
