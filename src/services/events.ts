@@ -269,7 +269,7 @@ export const saveEvent = async ({ editingId, draft }: SaveEventInput) => {
   // the edit replaced it with a new one (or removed it entirely).
   let previousPosterUrl: string | null = null;
   if (editingId) {
-    const { data } = await supabase.from("events").select("poster_url").eq("id", editingId).maybeSingle();
+    const { data } = await supabase.from("events").select("poster_url").eq("id", editingId).limit(1).maybeSingle();
     previousPosterUrl = (data as { poster_url: string | null } | null)?.poster_url ?? null;
   }
 

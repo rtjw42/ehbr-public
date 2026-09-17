@@ -250,6 +250,7 @@ export const saveBacklineContent = async (input: BacklineSaveInput) => {
     .from("backline_content")
     .select("file_path")
     .eq("section_key", input.sectionKey)
+    .limit(1)
     .maybeSingle();
   const previousFilePath = (existing as { file_path: string | null } | null)?.file_path ?? null;
 

@@ -173,6 +173,7 @@ const loadOwnCapabilities = async (userId: string): Promise<{ isHead: boolean; i
     .from("admin_capabilities")
     .select("is_head, is_owner")
     .eq("user_id", userId)
+    .limit(1)
     .maybeSingle();
   return { isHead: data?.is_head ?? false, isOwner: data?.is_owner ?? false };
 };

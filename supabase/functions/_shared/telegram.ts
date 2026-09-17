@@ -62,14 +62,14 @@ const callTelegram = async (
     console.error(`telegram ${method} failed:`, description);
     return { ok: false, description };
   } catch (error) {
-    const description = error instanceof Error ? error.message : String(error);
+    // Deno's fetch errors quote the request URL, and the URL carries the token.
+    const raw = error instanceof Error ? error.message : String(error);
+    const description = raw.replaceAll(token, "<token>");
     console.error(`telegram ${method} error:`, description);
     return { ok: false, description };
   }
 };
 
-// Plain text only — parse_mode is intentionally omitted (user-supplied titles /
-// names / info would be a formatting-injection vector in Markdown/HTML modes).
 // C2 board edit-in-place. The board builder emits HTML with every user field
 // escaped, so it MUST be edited with parse_mode:"HTML" to match the original
 // send. Telegram answers "message is not modified" with an error; callers should

@@ -2,9 +2,9 @@
 // Trust boundary: verify_jwt = false (see supabase/config.toml) — reachable by
 // anon. Compensating guards: CORS allow-list, Cloudflare Turnstile, and per-IP
 // rate limiting. The response is identical whether or not the email exists, so
-// the endpoint never reveals which addresses are registered. Reset links are
-// minted server-side with the service role; no admin state is exposed to the
-// caller.
+// the endpoint never reveals which addresses are registered. The rate-limit
+// ledger is written with the service role; the reset email itself goes through
+// Supabase Auth on the anon client, so no admin state is exposed to the caller.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { PublicError } from "../_shared/public-error.ts";
 import {
@@ -57,7 +57,9 @@ Deno.serve(async (req) => {
     const email = stripHtmlText(body.email);
     const turnstileToken = typeof body.turnstileToken === "string" ? body.turnstileToken : "";
     const requestedRedirect = typeof body.redirectTo === "string" ? body.redirectTo : "";
-    const redirectTo = requestedRedirect.startsWith(origin) ? requestedRedirect : `${origin}/reset-password`;
+    const redirectTo = requestedRedirect === origin || requestedRedirect.startsWith(`${origin}/`)
+      ? requestedRedirect
+      : `${origin}/reset-password`;
 
     if (!emailPattern.test(email)) {
       return json(origin, { error: "Enter a valid email address." }, 400);

@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const turnstileToken = typeof body.turnstileToken === "string" ? body.turnstileToken : "";
     const action = typeof body.action === "string" ? body.action : "register";
     const requestedRedirect = typeof body.emailRedirectTo === "string" ? body.emailRedirectTo : "";
-    const emailRedirectTo = requestedRedirect.startsWith(origin)
+    const emailRedirectTo = requestedRedirect === origin || requestedRedirect.startsWith(`${origin}/`)
       ? requestedRedirect
       : `${origin}/registration-success`;
 
