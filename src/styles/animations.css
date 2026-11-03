@@ -1,0 +1,69 @@
+@layer utilities {
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elev { box-shadow: var(--shadow-elev); }
+  .ease-smooth-transition { transition-timing-function: var(--transition-smooth); }
+  .motion-duration-base {
+    animation-duration: var(--duration-slow);
+    transition-duration: var(--duration-slow);
+  }
+  .motion-duration-fast {
+    animation-duration: var(--duration-base);
+    transition-duration: var(--duration-base);
+  }
+  .motion-state-ease[data-state="open"] {
+    animation-timing-function: var(--ease-standard);
+    transition-timing-function: var(--ease-standard);
+  }
+  .motion-state-ease[data-state="closed"] {
+    animation-timing-function: var(--ease-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+
+  .skeleton-block::after {
+    animation: skeleton-shimmer 1.28s ease-in-out infinite;
+  }
+
+  /*
+   * Graceful image load — opacity-only fade so late-arriving posters/previews
+   * settle in instead of popping. This is load-quality, not decorative motion.
+   * Applied by <FadeInImg> only once an image decodes asynchronously; cached
+   * images mount without the class and land at rest instantly. Only opacity
+   * animates → stays on the GPU.
+   */
+  .img-fade {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  /*
+   * Disclosure reveal — a section opening in flow (MediaDetail's setlist). The
+   * layout commits ONCE at full height; the content then slides down from under
+   * its header and fades in, clipped by an overflow-hidden parent. Transform +
+   * opacity only, so a 30-row list opens at the compositor's frame rate instead of
+   * re-laying-out every frame (which is what the old grid-rows height glide did,
+   * and why it stuttered on phones). Closing is instant — nothing to animate.
+   */
+  @keyframes disclosure-reveal {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -0.75rem, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .disclosure-reveal {
+    animation: disclosure-reveal var(--duration-slow) var(--ease-standard) both;
+  }
+
+  @keyframes skeleton-shimmer {
+    to { transform: translateX(100%); }
+  }
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+}

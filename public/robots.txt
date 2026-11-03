@@ -1,0 +1,23 @@
+# Search engines: the landing page and nothing else.
+#
+# The /assets/ block is deliberate. Google indexes the static index.html only
+# (title + description). Allowing the bundle would let Googlebot render
+# Landing.tsx, which loads footer contacts and today's bookings on mount, and
+# put those into the index. Ignore Search Console's "blocked resources"
+# warning; never add Allow: /assets/.
+User-agent: Googlebot
+User-agent: Bingbot
+Allow: /$
+Disallow: /
+
+# Link-preview fetchers (Telegram, WhatsApp, iMessage, X, Facebook) - not
+# crawlers; they only fetch what someone shares.
+User-agent: Twitterbot
+User-agent: facebookexternalhit
+User-agent: TelegramBot
+User-agent: WhatsApp
+Allow: /
+
+# Everyone else, including AI crawlers.
+User-agent: *
+Disallow: /

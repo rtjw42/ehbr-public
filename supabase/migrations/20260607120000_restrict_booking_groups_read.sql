@@ -1,0 +1,11 @@
+-- Remove world-readable SELECT on booking_groups.
+--
+-- The frontend never queries booking_groups directly: group operations run through
+-- group_id filters on the bookings table and through SECURITY DEFINER RPCs
+-- (approve_booking_group_overwrite, create_approved_booking_series, ...) which bypass
+-- RLS. The original "Anyone can read booking groups" (USING (true)) policy therefore
+-- exposed recurrence-group metadata to anonymous clients with no legitimate consumer.
+--
+-- Admins keep full access via "Admins manage booking groups" (FOR ALL). Definer RPCs
+-- are unaffected. Net effect: anon/non-admin SELECT on booking_groups is removed.
+DROP POLICY IF EXISTS "Anyone can read booking groups" ON public.booking_groups;

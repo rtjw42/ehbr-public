@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    # dev is the working branch here; main is the public mirror's branch, so the
+    # workflow runs in both repositories.
+    branches: [dev, main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm run build
+      # Fail only on high/critical dependency advisories (moderate is informational).
+      - run: npm audit --omit=dev --audit-level=high
+      # Reports dev's result to Healthchecks.io so a red build reaches the owner the
+      # same day. Pushes to dev only: on the public mirror and on Dependabot PRs the
+      # secret is absent and this does nothing.
+      - name: Report to Healthchecks.io
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        env:
+          HC_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          [ -n "$HC_KEY" ] || exit 0
+          suffix=""; [ "$JOB_STATUS" = "success" ] || suffix="/fail"
+          curl -fsS -m 10 --retry 3 -o /dev/null "https://hc-ping.com/${HC_KEY}/ci${suffix}?create=1" || true
