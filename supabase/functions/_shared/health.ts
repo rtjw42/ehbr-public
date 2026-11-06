@@ -42,9 +42,16 @@ const ping = async (url: string, body: string) => {
   }
 };
 
-export const runHealthCheck = async ({ name, required, requiredWhenMonitored = [] }: HealthSpec) => {
+// Reports one result to the named check. create=1 makes Healthchecks.io create the
+// check on its first ping. Does nothing on a deployment without a ping key.
+export const reportHealth = async (name: string, ok: boolean, body: string) => {
   const pingKey = env("HEALTHCHECKS_PING_KEY");
-  const problems = [...required, ...(pingKey ? requiredWhenMonitored : [])]
+  if (pingKey) await ping(`https://hc-ping.com/${pingKey}/${name}${ok ? "" : "/fail"}?create=1`, body);
+};
+
+export const runHealthCheck = async ({ name, required, requiredWhenMonitored = [] }: HealthSpec) => {
+  const monitored = Boolean(env("HEALTHCHECKS_PING_KEY"));
+  const problems = [...required, ...(monitored ? requiredWhenMonitored : [])]
     .filter((key) => !env(key))
     .map((key) => `${key} missing`);
   if (!env("ALLOWED_ORIGINS") && !env("SITE_URL")) {
@@ -66,10 +73,7 @@ export const runHealthCheck = async ({ name, required, requiredWhenMonitored = [
   }
 
   const ok = problems.length === 0;
-  if (pingKey) {
-    // create=1 makes Healthchecks.io create the check on its first ping.
-    await ping(`https://hc-ping.com/${pingKey}/${name}${ok ? "" : "/fail"}?create=1`, problems.join("\n"));
-  }
+  await reportHealth(name, ok, problems.join("\n"));
   return new Response(JSON.stringify({ ok, problems }), {
     status: ok ? 200 : 503,
     headers: { "Content-Type": "application/json" },

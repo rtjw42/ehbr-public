@@ -204,11 +204,11 @@ unset every request is rejected.
 
 ```bash
 supabase functions deploy submit-booking register-admin request-password-reset \
-  upload-admin-file set-staff-ban telegram-weekly log-funnel-step
+  upload-admin-file set-staff-ban telegram-weekly telegram-reminder log-funnel-step
 ```
 
 > [!IMPORTANT]
-> Deploy all seven together, every time. `supabase/functions/_shared/` is bundled into each
+> Deploy all eight together, every time. `supabase/functions/_shared/` is bundled into each
 > function at deploy time, so each one carries its own copy. Redeploy a subset and the rest
 > keep running the old code.
 
@@ -239,10 +239,11 @@ sender works out of the box but is rate-limited, so the live site uses
 [Resend](https://resend.com) as custom SMTP, set in the Supabase dashboard's auth settings.
 Any SMTP provider works.
 
-**Cron jobs.** `supabase db push` schedules six `pg_cron` jobs:
+**Cron jobs.** `supabase db push` schedules seven `pg_cron` jobs:
 - a five-minute ping that keeps the public functions warm
 - a fifteen-minute health check of the public functions
 - the Telegram board's drain and weekly rollover
+- a daily reminder to the admin chat about requests still pending
 - a daily purge of cron history
 - a nightly vacuum of `pg_net`'s response table
 
@@ -259,7 +260,7 @@ with your project URL and anon key (SQL editor):
 ```bash
 supabase secrets set WARMUP_SECRET=<random-32-char-token>
 supabase functions deploy submit-booking register-admin request-password-reset \
-  upload-admin-file set-staff-ban telegram-weekly log-funnel-step
+  upload-admin-file set-staff-ban telegram-weekly telegram-reminder log-funnel-step
 ```
 
 ```sql
@@ -284,14 +285,15 @@ minutes to confirm its secrets are set and the database answers. To be told when
 fails, or stops happening because the project paused, create a free
 [Healthchecks.io](https://healthchecks.io) project, copy its ping key, and set it as
 `HEALTHCHECKS_PING_KEY` (Edge secret, then redeploy every function). Each function creates
-its own check on first ping. Setting the same key as a GitHub Actions secret makes CI and
-the nightly backup report too. Without the key, nothing is sent anywhere.
+its own check on first ping, and the daily Telegram reminder reports the same way. Setting
+the same key as a GitHub Actions secret makes CI and the nightly backup report too. Without
+the key, nothing is sent anywhere.
 
 </details>
 
 **Telegram.** Optional. Without a bot token the app works normally and sends nothing. The
-variables are under [Environment variables](#environment-variables); the board drain also
-needs one Vault secret, `telegram_trigger_secret`, holding the same value as
+variables are under [Environment variables](#environment-variables); the board drain and the
+daily reminder also need one Vault secret, `telegram_trigger_secret`, holding the same value as
 `TELEGRAM_TRIGGER_SECRET`.
 
 ### 5. Make it yours
@@ -341,8 +343,8 @@ Project Settings → Environment Variables, and deploy.
 | Variable | Purpose |
 | --- | --- |
 | `TELEGRAM_BOT_TOKEN` | Enables outbound notifications. Unset means nothing is sent |
-| `TELEGRAM_TRIGGER_SECRET` | Authorises the weekly board run. `telegram-weekly` **fails closed** without it |
-| `TELEGRAM_ADMIN_CHAT_ID` | Destination for new-booking pings |
+| `TELEGRAM_TRIGGER_SECRET` | Authorises the weekly board and reminder runs. `telegram-weekly` and `telegram-reminder` **fail closed** without it |
+| `TELEGRAM_ADMIN_CHAT_ID` | Destination for new-booking pings and reminders |
 | `TELEGRAM_BOARD_CHAT_ID` | Destination for the weekly schedule board |
 | `TELEGRAM_ADMIN_THREAD_ID` · `TELEGRAM_BOARD_THREAD_ID` | Forum topic ids, if the chat uses topics |
 | `TELEGRAM_BOARD_MODE` | `edit` (default: one self-healing pinned message) or `announce` (new post each week) |
@@ -376,7 +378,7 @@ CI runs `typecheck`, `lint`, `test:coverage`, and `build` on every push, then
 | Booking fails and the browser console shows a CORS error | Your origin is not in `ALLOWED_ORIGINS` | Add it, including your local dev origin (scheme, host, and port, exactly as Vite printed it) while developing, and redeploy the functions |
 | "Verification failed or expired" on every booking | Turnstile site key and secret are from different widgets, or a test key is paired with a real secret | Use a matching pair |
 | Registration or reset email never arrives | Supabase's built-in sender is rate-limited | Check the Auth logs in the Supabase dashboard, then set custom SMTP |
-| A function still behaves like the old code after a deploy | Only some functions were redeployed | Deploy all seven together |
+| A function still behaves like the old code after a deploy | Only some functions were redeployed | Deploy all eight together |
 
 ## Security model
 
@@ -397,9 +399,10 @@ The app exposes public forms while keeping write access narrow.
 - **Minimal data collection.** A public booking captures a session title, a display name,
   and an optional notes field. No contact details, no personal identifiers. The only place
   those fields go outside the database is Telegram, if it is configured: when a request is
-  submitted, its title, name and notes go to a private admin chat for review, and once it is
-  approved, the title and name appear on a weekly board in the band's private group so the
-  shared schedule stays current. Rate limiting stores a salted hash of the submitter's IP,
+  submitted, its title, name and notes go to a private admin chat for review. If it is still
+  pending a day or two before its first session, its title and name go to that chat again as
+  a reminder. Once it is approved, the title and name appear on a weekly board in the band's
+  private group so the shared schedule stays current. Rate limiting stores a salted hash of the submitter's IP,
   never the address, and drops it after 24 hours.
 - **First-party, anonymous analytics.** Two locked tables, readable only from the database
   console, measure the booking process:

@@ -4,6 +4,7 @@
 // (UTC+8) regardless of the machine's local timezone.
 import { describe, expect, it } from "vitest";
 import {
+  buildAdminReminderMessage,
   buildAdminRequestMessage,
   buildWeeklyBoardMessage,
   formatTelegramTimeRange,
@@ -210,6 +211,54 @@ describe("buildAdminRequestMessage", () => {
       reviewUrl: "u",
     });
     expect(text).toContain("Ryan · <b>15 Jun</b> · <b>12:30–2am</b>");
+  });
+});
+
+describe("buildAdminReminderMessage", () => {
+  const input = {
+    title: "Practice",
+    name: "Bandit",
+    recurrence: "none" as const,
+    rows: [{ start_time: iso("2026-06-15T11:00:00Z"), end_time: iso("2026-06-15T13:00:00Z") }],
+    requestedAt: iso("2026-06-10T01:00:00Z"),
+    reviewUrl: "https://band.test/?admin=login&next=/admin",
+    pendingCount: 2,
+  };
+
+  it("keeps the request ping's layout, with the day it came in", () => {
+    expect(buildAdminReminderMessage(input)).toBe(
+      [
+        "─".repeat("Request still pending".length),
+        "⏰ <b>Request still pending</b>",
+        "",
+        "<b>Practice</b>",
+        "Bandit · <b>15 Jun</b> · <b>7–9pm</b>",
+        "Waiting since 10 Jun",
+        "",
+        '<a href="https://band.test/?admin=login&amp;next=/admin">Approve / Reject</a> · 2 pending',
+      ].join("\n"),
+    );
+  });
+
+  it("dates the wait in SGT", () => {
+    // 16:30Z on the 9th is already 12:30am on the 10th in Singapore.
+    expect(buildAdminReminderMessage({ ...input, requestedAt: iso("2026-06-09T16:30:00Z") })).toContain("Waiting since 10 Jun");
+  });
+
+  it("shows a weekly request the way the ping does", () => {
+    const rows = [
+      { start_time: iso("2026-06-15T11:00:00Z"), end_time: iso("2026-06-15T13:00:00Z") },
+      { start_time: iso("2026-06-22T11:00:00Z"), end_time: iso("2026-06-22T13:00:00Z") },
+    ];
+    const text = buildAdminReminderMessage({ ...input, recurrence: "weekly", rows });
+    expect(text).toContain("Bandit · <b>Every Monday</b> · <b>7–9pm</b>");
+    expect(text).toContain("15 Jun – 22 Jun · 2 sessions");
+  });
+
+  it("escapes user fields", () => {
+    const text = buildAdminReminderMessage({ ...input, title: "<b>x</b>", name: "A & B" });
+    expect(text).toContain("<b>&lt;b&gt;x&lt;/b&gt;</b>");
+    expect(text).toContain("A &amp; B ·");
   });
 });
 

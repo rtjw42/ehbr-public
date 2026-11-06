@@ -23,7 +23,7 @@ export type TelegramBookingRow = {
 
 // Weekly is the only pattern ("daily"/"monthly" retired — multi-date pick covers
 // them); submit-booking narrows anything else to "none".
-type TelegramRecurrence = "none" | "weekly";
+export type TelegramRecurrence = "none" | "weekly";
 
 // Escape the five HTML-significant chars so user-supplied text (title / name /
 // info) is inert under parse_mode="HTML". The admin message uses HTML entities
@@ -161,6 +161,7 @@ const GUITAR = "🎸";
 const DRUM = "🥁";
 const PEN = "🖊️";
 const CALENDAR = "📅";
+const ALARM = "⏰";
 
 // The admin-ping header text + a continuous box-drawing rule (U+2500 has no
 // inter-glyph gap like hyphens do) sized to the header's length, so the top
@@ -168,11 +169,44 @@ const CALENDAR = "📅";
 // stacked request messages read as visually separate bubbles.
 const REQUEST_HEADER = "New booking request";
 const BOX_RULE = "─".repeat(REQUEST_HEADER.length);
+const REMINDER_HEADER = "Request still pending";
+const REMINDER_RULE = "─".repeat(REMINDER_HEADER.length);
 
 // "15 Jun" for one row (SGT calendar day).
 const formatSingleDate = (row: TelegramBookingRow) => {
   const { day, monthShort } = sgtParts(row.start_time);
   return `${day} ${monthShort}`;
+};
+
+// The "who · when · time" facts of a request, case-dependent, shared by the
+// request ping and its reminder. Expects rows already sorted by sortRows.
+const requestFactLines = (rawName: string, recurrence: TelegramRecurrence, rows: TelegramBookingRow[]) => {
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const name = escapeHtml(rawName);
+  const time = () => formatTelegramTimeRange(first.start_time, first.end_time);
+
+  // Mirrors the website's date-then-time hierarchy, collapsed onto a facts line.
+  if (rows.length === 1 && isMultiDaySgt(first.start_time, first.end_time)) {
+    // A single booking that crosses midnight → one span, no separate date/time.
+    return [`${name} · <b>${formatMultiDaySpan(first.start_time, first.end_time)}</b>`];
+  }
+  if (recurrence !== "none") {
+    // Weekly pattern → weekday + time, then the run as a second line.
+    return [
+      `${name} · <b>Every ${sgtWeekdayLong(first.start_time)}</b> · <b>${time()}</b>`,
+      `${formatSingleDate(first)} – ${formatSingleDate(last)} · ${rows.length} sessions`,
+    ];
+  }
+  if (rows.length === 1) return [`${name} · <b>${formatSingleDate(first)}</b> · <b>${time()}</b>`];
+  // Pick-dates: time, then the full list of hand-picked days as a second line.
+  return [`${name} · <b>${time()}</b>`, `${escapeHtml(formatDateList(rows))} · ${rows.length} dates`];
+};
+
+// The tappable review link, with the live pending count when it is known.
+const reviewActionLine = (reviewUrl: string, pendingCount?: number) => {
+  const action = `<a href="${escapeHtml(reviewUrl)}">Approve / Reject</a>`;
+  return typeof pendingCount === "number" ? `${action} · ${pendingCount} pending` : action;
 };
 
 // ── C1: admin-chat new-request message (HTML parse_mode) ─────────────────────
@@ -192,29 +226,13 @@ export const buildAdminRequestMessage = (input: {
   // the count is left off (e.g. if the count query failed).
   pendingCount?: number;
 }) => {
-  const rows = sortRows(input.rows);
-  const first = rows[0];
-  const last = rows[rows.length - 1];
-  const name = escapeHtml(input.name);
-  const time = () => formatTelegramTimeRange(first.start_time, first.end_time);
-
-  const lines = [BOX_RULE, `${PEN} <b>${REQUEST_HEADER}</b>`, "", `<b>${escapeHtml(input.title)}</b>`];
-
-  // Mirrors the website's date-then-time hierarchy, collapsed onto a facts line.
-  if (rows.length === 1 && isMultiDaySgt(first.start_time, first.end_time)) {
-    // A single booking that crosses midnight → one span, no separate date/time.
-    lines.push(`${name} · <b>${formatMultiDaySpan(first.start_time, first.end_time)}</b>`);
-  } else if (input.recurrence !== "none") {
-    // Weekly pattern → weekday + time, then the run as a second line.
-    lines.push(`${name} · <b>Every ${sgtWeekdayLong(first.start_time)}</b> · <b>${time()}</b>`);
-    lines.push(`${formatSingleDate(first)} – ${formatSingleDate(last)} · ${rows.length} sessions`);
-  } else if (rows.length === 1) {
-    lines.push(`${name} · <b>${formatSingleDate(first)}</b> · <b>${time()}</b>`);
-  } else {
-    // Pick-dates: time, then the full list of hand-picked days as a second line.
-    lines.push(`${name} · <b>${time()}</b>`);
-    lines.push(`${escapeHtml(formatDateList(rows))} · ${rows.length} dates`);
-  }
+  const lines = [
+    BOX_RULE,
+    `${PEN} <b>${REQUEST_HEADER}</b>`,
+    "",
+    `<b>${escapeHtml(input.title)}</b>`,
+    ...requestFactLines(input.name, input.recurrence, sortRows(input.rows)),
+  ];
 
   const info = input.info.trim();
   if (info) {
@@ -222,9 +240,34 @@ export const buildAdminRequestMessage = (input: {
     lines.push(`<i>${escapeHtml(truncated)}</i>`);
   }
 
-  const action = `<a href="${escapeHtml(input.reviewUrl)}">Approve / Reject</a>`;
-  lines.push("", typeof input.pendingCount === "number" ? `${action} · ${input.pendingCount} pending` : action);
+  lines.push("", reviewActionLine(input.reviewUrl, input.pendingCount));
   return lines.join("\n");
+};
+
+// ── Admin-chat reminder for a request still pending (HTML parse_mode) ────────
+// The request ping's layout with the day it came in, for the daily reminder
+// (telegram-reminder). No booker's note, so it sends nothing the ping did not.
+
+export const buildAdminReminderMessage = (input: {
+  title: string;
+  name: string;
+  recurrence: TelegramRecurrence;
+  rows: TelegramBookingRow[];
+  requestedAt: string;
+  reviewUrl: string;
+  pendingCount: number;
+}) => {
+  const { day, monthShort } = sgtParts(input.requestedAt);
+  return [
+    REMINDER_RULE,
+    `${ALARM} <b>${REMINDER_HEADER}</b>`,
+    "",
+    `<b>${escapeHtml(input.title)}</b>`,
+    ...requestFactLines(input.name, input.recurrence, sortRows(input.rows)),
+    `Waiting since ${day} ${monthShort}`,
+    "",
+    reviewActionLine(input.reviewUrl, input.pendingCount),
+  ].join("\n");
 };
 
 // ── C2: SGT ISO week window (Mon 00:00 → next Mon 00:00) ─────────────────────
